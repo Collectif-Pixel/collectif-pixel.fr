@@ -1,43 +1,142 @@
-# Astro Starter Kit: Minimal
+<div align="center">
+  <img src="./.github/assets/thumbnail.jpg" alt="Collectif Pixel">
+</div>
 
-```sh
-npm create astro@latest -- --template minimal
+<div align="center">
+
+[![astro-image]][astro-url]
+[![tailwind-image]][tailwind-url]
+[![docker-image]][docker-url]
+[![gh-workflow-image]][gh-workflow-url]
+[![licence-image]][licence-url]
+
+</div>
+
+<br />
+
+## Collectif Pixel
+
+Site vitrine de l'association Collectif Pixel, une association loi 1901 créée par des étudiants passionnés de technologie.
+
+- **Podcast** - Pixel Podcast, la tech vue par la nouvelle génération
+- **Open Source** - Tous nos projets sont ouverts et disponibles sur GitHub
+- **Transparence** - Documents officiels de l'association accessibles à tous
+
+## Stack
+
+**Frontend**: Astro, Tailwind CSS v4, TypeScript
+**Animations**: Lenis (smooth scroll), Intersection Observer
+**Build**: Vite, Sharp (optimisation images)
+**Deploy**: Docker, Nginx, Cloudflare Tunnel
+
+## Development
+
+### Prerequisites
+
+- Node.js >= 18
+- pnpm ou npm
+
+### Setup
+
+```bash
+npm install
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+### Commands
 
-## 🚀 Project Structure
+```bash
+# Development
+npm run dev           # Dev server avec hot reload
 
-Inside of your Astro project, you'll see the following folders and files:
+# Build
+npm run build         # Build production
+npm run preview       # Preview du build
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+# Docker
+docker build -t collectif-pixel .
+docker run -p 8080:80 collectif-pixel
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Architecture
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+```
+src/
+├── assets/           # Images optimisées par Astro
+├── components/       # Composants Astro
+│   ├── Header.astro
+│   ├── Hero.astro
+│   ├── Podcast.astro
+│   ├── OpenSource.astro
+│   ├── Transparence.astro
+│   ├── About.astro
+│   └── Footer.astro
+├── layouts/          # Layout principal
+├── pages/            # Routes
+│   ├── index.astro
+│   ├── mentions-legales.astro
+│   └── politique-de-confidentialite.astro
+└── styles/           # CSS global
 
-Any static assets, like images, can be placed in the `public/` directory.
+public/
+├── documents/        # PDFs (statuts, PV, etc.)
+├── favicon.svg
+└── robots.txt
+```
 
-## 🧞 Commands
+## Deployment
 
-All commands are run from the root of the project, from a terminal:
+### Docker (recommandé)
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+L'image Docker est automatiquement buildée et pushée sur GitHub Container Registry à chaque push sur `main`.
 
-## 👀 Want to learn more?
+```bash
+# Pull et run
+docker pull ghcr.io/collectif-pixel/collectif-pixel.fr:latest
+docker run -p 80:80 ghcr.io/collectif-pixel/collectif-pixel.fr:latest
+```
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+### Manuel
+
+```bash
+npm run build
+# Servir le contenu de dist/ avec Nginx, Apache, etc.
+```
+
+## Configuration
+
+### Site URL
+
+Éditer `astro.config.mjs` :
+
+```js
+export default defineConfig({
+  site: 'https://collectif-pixel.fr',
+  // ...
+});
+```
+
+### Variables d'environnement
+
+Aucune variable d'environnement requise pour le build.
+
+## Liens
+
+- **Site**: [collectif-pixel.fr](https://collectif-pixel.fr)
+- **Podcast**: [Spotify](https://open.spotify.com/show/4BQ5vVIjDufKgtqHrn6zqZ) · [Apple Podcasts](https://podcasts.apple.com/us/podcast/pixel-by-ekod-students/id1774553858) · [YouTube](https://www.youtube.com/@CollectifPixel)
+- **GitHub**: [github.com/Collectif-Pixel](https://github.com/Collectif-Pixel)
+- **Contact**: pixelbyekod@gmail.com
+
+## License
+
+[MIT](LICENSE)
+
+[astro-image]: https://img.shields.io/badge/Astro-BC52EE.svg?style=for-the-badge&logo=astro&logoColor=white
+[astro-url]: https://astro.build
+[tailwind-image]: https://img.shields.io/badge/Tailwind_CSS-38B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white
+[tailwind-url]: https://tailwindcss.com
+[docker-image]: https://img.shields.io/badge/Docker-2496ED.svg?style=for-the-badge&logo=docker&logoColor=white
+[docker-url]: https://www.docker.com
+[gh-workflow-image]: https://img.shields.io/github/actions/workflow/status/Collectif-Pixel/collectif-pixel.fr/docker.yml?branch=main&style=for-the-badge
+[gh-workflow-url]: https://github.com/Collectif-Pixel/collectif-pixel.fr/actions/workflows/docker.yml
+[licence-image]: https://img.shields.io/badge/License-MIT-green?style=for-the-badge
+[licence-url]: LICENSE
