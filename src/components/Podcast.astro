@@ -1,0 +1,179 @@
+---
+import { Image } from 'astro:assets';
+import { siSpotify, siApplepodcasts, siYoutube } from 'simple-icons';
+
+import deezerIcon from '../assets/Deezer_Symbol_0.svg';
+import amazonIcon from '../assets/Amazon_Music_Logo_Stacked_RGB_White_MASTER.png';
+import coverS2E2 from '../assets/podcasts/S2E2.jpeg';
+import coverS2E1 from '../assets/podcasts/S2E1.jpeg';
+import coverS1E3 from '../assets/podcasts/S1E3.jpeg';
+import coverS1E2 from '../assets/podcasts/S1E2.jpeg';
+import coverS1E1 from '../assets/podcasts/S1E1.jpeg';
+
+const episodes = [
+  {
+    title: "S2E2 - IA, Leadership et Retraite : Les Clés pour un Avenir Maîtrisé",
+    date: "27-02-2025",
+    duration: "1h 25min",
+    description: "L'intelligence artificielle façonne le monde, le leadership transforme les équipes, et la retraite des entrepreneurs se prépare dès aujourd'hui.",
+    cover: coverS2E2,
+    youtube: "",
+  },
+  {
+    title: "S2E1 - Apple, Secrets d'Entrepreneurs et Optimus",
+    date: "26-01-2025",
+    duration: "1h 48min",
+    description: "Apple déchaîne les passions, l'entrepreneuriat dévoile ses secrets, et Optimus révolutionne la tech avec l'IA.",
+    cover: coverS2E1,
+    youtube: "EFGDdB14Vwc",
+  },
+  {
+    title: "S1E3 - Développeuses, Syndrome de l'Imposteur et Clients Relous",
+    date: "11-12-2024",
+    duration: "1h 19min",
+    description: "Les réalités, défis et anecdotes des professionnels de la tech en 2024.",
+    cover: coverS1E3,
+    youtube: "lkqpyRLssgc",
+  },
+  {
+    title: "S1E2 - Digital en Ébullition : Révolutions Créatives, Super-Apps, et Conseils pour Percer !",
+    date: "31-10-2024",
+    duration: "1h 13min",
+    description: "Exploration des tendances qui redéfinissent le monde digital et les carrières de demain.",
+    cover: coverS1E2,
+    youtube: "_tW8PO_qOyY",
+  },
+  {
+    title: "S1E1 - L'IA qui code : le rêve des patrons, le cauchemar des dev ?",
+    date: "17-10-2024",
+    duration: "~1h",
+    description: "L'impact de l'IA générative sur le monde du développement.",
+    cover: coverS1E1,
+    youtube: "HKMf9TneRXM",
+  },
+];
+
+const platforms = [
+  {
+    name: "Spotify",
+    url: "https://open.spotify.com/show/4BQ5vVIjDufKgtqHrn6zqZ",
+    svg: siSpotify.svg,
+  },
+  {
+    name: "Apple Podcasts",
+    url: "https://podcasts.apple.com/us/podcast/pixel-by-ekod-students/id1774553858",
+    svg: siApplepodcasts.svg,
+  },
+  {
+    name: "YouTube",
+    url: "https://www.youtube.com/playlist?list=PLcppFSi4nnxdS2zgfc5HW2u93t1sBj3m3",
+    svg: siYoutube.svg,
+  },
+  {
+    name: "Deezer",
+    url: "https://www.deezer.com/fr/show/1001331181",
+    icon: deezerIcon,
+  },
+  {
+    name: "Amazon Music",
+    url: "https://music.amazon.fr/podcasts/18bb671a-ae2d-43a5-b833-6bbb892d5874/pixel-by-ekod-students",
+    icon: amazonIcon,
+  },
+];
+---
+
+<section id="podcast" class="py-24 relative">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16 reveal">
+      <span class="text-pixel-accent font-semibold text-sm tracking-wider uppercase">Notre Podcast</span>
+      <h2 class="text-4xl md:text-5xl font-bold mt-4 mb-6">Pixel Podcast</h2>
+      <p class="text-pixel-text-muted text-lg max-w-2xl mx-auto">
+        Anciennement "Pixel by EKOD Students", ce podcast est né pendant notre alternance à l'école EKOD. Chaque épisode, nous explorons les mondes du développement web, du design graphique, des systèmes réseaux et de l'entrepreneuriat.
+      </p>
+    </div>
+
+    <div class="flex flex-wrap justify-center gap-4 mb-16 stagger-children">
+      {platforms.map((platform) => (
+        <a
+          href={platform.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-2 px-5 py-3 bg-pixel-gray border border-pixel-gray-light rounded-xl hover:border-pixel-accent/50 transition-all group"
+        >
+          {platform.svg ? (
+            <span class="w-5 h-5 text-pixel-text-muted group-hover:text-pixel-text transition-colors [&>svg]:w-full [&>svg]:h-full [&>svg]:fill-current" set:html={platform.svg} />
+          ) : (
+            <Image src={platform.icon} alt={platform.name} class="w-5 h-5 object-contain opacity-70 group-hover:opacity-100 transition-opacity" />
+          )}
+          <span class="font-medium text-sm">{platform.name}</span>
+        </a>
+      ))}
+    </div>
+
+    <div class="mb-16 reveal-scale">
+      <iframe
+        style="border-radius:12px"
+        src="https://open.spotify.com/embed/show/4BQ5vVIjDufKgtqHrn6zqZ?utm_source=generator&theme=0"
+        width="100%"
+        height="352"
+        frameBorder="0"
+        allowfullscreen=""
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        loading="lazy"
+        title="Pixel Podcast sur Spotify"
+      ></iframe>
+    </div>
+
+    <div class="space-y-4 stagger-children">
+      <h3 class="text-2xl font-bold mb-6">Derniers épisodes</h3>
+      {episodes.map((episode) => {
+        const hasYoutube = episode.youtube !== "";
+        const content = (
+          <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div class="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-pixel-gray-light relative">
+              <Image
+                src={episode.cover}
+                alt={episode.title}
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                loading="lazy"
+              />
+              {hasYoutube && (
+                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                  <svg class="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                </div>
+              )}
+            </div>
+            <div class="flex-1 min-w-0">
+              <h4 class="font-semibold text-lg group-hover:text-pixel-accent-light transition-colors line-clamp-1">
+                {episode.title}
+              </h4>
+              <p class="text-pixel-text-muted text-sm mt-1 line-clamp-2">
+                {episode.description}
+              </p>
+            </div>
+            <div class="flex sm:flex-col items-center sm:items-end gap-2 text-sm text-pixel-text-muted">
+              <span>{episode.date}</span>
+              <span class="px-3 py-1 bg-pixel-gray-light rounded-full text-xs">{episode.duration}</span>
+            </div>
+          </div>
+        );
+        return hasYoutube ? (
+          <a
+            href={`https://www.youtube.com/watch?v=${episode.youtube}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="block p-4 bg-pixel-gray/50 border border-pixel-gray-light/50 rounded-2xl transition-all group hover:border-pixel-accent/30 hover:scale-[1.01] cursor-pointer"
+          >
+            {content}
+          </a>
+        ) : (
+          <div class="block p-4 bg-pixel-gray/50 border border-pixel-gray-light/50 rounded-2xl opacity-75 group">
+            {content}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+</section>

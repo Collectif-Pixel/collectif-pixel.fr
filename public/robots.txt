@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://collectif-pixel.fr/sitemap-index.xml

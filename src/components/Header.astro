@@ -1,0 +1,73 @@
+---
+import { Image } from 'astro:assets';
+import logo from '../assets/logo-pixel.png';
+
+const navLinks = [
+  { href: '#podcast', label: 'Podcast' },
+  { href: '#opensource', label: 'Open Source' },
+  { href: '#transparence', label: 'Transparence' },
+  { href: '#about', label: 'À propos' },
+];
+---
+
+<header class="fixed top-0 left-0 right-0 z-50 bg-pixel-darker/80 backdrop-blur-lg border-b border-pixel-gray-light/20">
+  <nav class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-2 group">
+      <Image src={logo} alt="Pixel" class="h-8 w-auto group-hover:opacity-80 transition-opacity" loading="eager" />
+    </a>
+
+    <ul class="hidden md:flex items-center gap-8">
+      {navLinks.map((link) => (
+        <li>
+          <a
+            href={link.href}
+            class="text-pixel-text-muted hover:text-pixel-text transition-colors text-sm font-medium"
+          >
+            {link.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    <button
+      id="mobile-menu-btn"
+      class="md:hidden p-2 text-pixel-text-muted hover:text-pixel-text transition-colors"
+      aria-label="Menu"
+    >
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  </nav>
+
+  <div id="mobile-menu" class="hidden md:hidden bg-pixel-darker border-t border-pixel-gray-light/20">
+    <ul class="px-6 py-4 space-y-4">
+      {navLinks.map((link) => (
+        <li>
+          <a
+            href={link.href}
+            class="block text-pixel-text-muted hover:text-pixel-text transition-colors font-medium"
+          >
+            {link.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</header>
+
+<script>
+  const menuBtn = document.getElementById('mobile-menu-btn');
+  const mobileMenu = document.getElementById('mobile-menu');
+
+  menuBtn?.addEventListener('click', () => {
+    mobileMenu?.classList.toggle('hidden');
+  });
+
+  // Close menu when clicking a link
+  mobileMenu?.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+      mobileMenu?.classList.add('hidden');
+    });
+  });
+</script>

@@ -1,0 +1,113 @@
+---
+const documents = [
+  {
+    title: "Statuts de l'association",
+    description: "Les statuts officiels du Collectif Pixel, association loi 1901.",
+    icon: "document",
+    file: "/documents/status-collectif-pixel.pdf",
+    date: "2024",
+  },
+  {
+    title: "Récépissé de déclaration",
+    description: "Récépissé de déclaration en préfecture de l'association.",
+    icon: "check",
+    file: "/documents/recepisse.pdf",
+    date: "2024",
+  },
+  {
+    title: "Liste des dirigeants",
+    description: "Liste des membres du bureau et dirigeants de l'association.",
+    icon: "users",
+    file: "/documents/liste_dirigeants.pdf",
+    date: "2024",
+  },
+  {
+    title: "PV Assemblée constitutive",
+    description: "Procès-verbal de l'assemblée générale constitutive.",
+    icon: "document",
+    file: "/documents/proces_verbal_assemblee_constitutive.pdf",
+    date: "2024",
+  },
+  {
+    title: "PV AG Ordinaire 2025",
+    description: "Procès-verbal de l'assemblée générale ordinaire du 25 mars 2025.",
+    icon: "document",
+    file: "/documents/proces_verbal_assemblee_ordinaire_25_mars_2025.pdf",
+    date: "2025",
+  },
+  {
+    title: "Comptes sociaux 2024",
+    description: "Situation financière et comptes de l'association pour 2024.",
+    icon: "wallet",
+    file: "/documents/compte_sociaux_2024.pdf",
+    date: "2024",
+  },
+];
+
+const icons = {
+  document: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>`,
+  chart: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>`,
+  wallet: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>`,
+  check: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
+  users: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`,
+};
+---
+
+<section id="transparence" class="py-24 relative">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16 reveal">
+      <span class="text-pixel-accent font-semibold text-sm tracking-wider uppercase">Confiance</span>
+      <h2 class="text-4xl md:text-5xl font-bold mt-4 mb-6">Transparence</h2>
+      <p class="text-pixel-text-muted text-lg max-w-2xl mx-auto">
+        La transparence est au cœur de nos valeurs. Retrouvez ici tous les documents officiels de l'association.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto stagger-children">
+      {documents.map((doc) => (
+        <a
+          href={doc.file}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="group p-6 bg-pixel-gray border border-pixel-gray-light rounded-2xl hover:border-pixel-accent/50 transition-all hover:scale-[1.02]"
+        >
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl bg-pixel-accent/10 flex items-center justify-center text-pixel-accent flex-shrink-0">
+              <Fragment set:html={icons[doc.icon as keyof typeof icons]} />
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-semibold text-lg group-hover:text-pixel-accent-light transition-colors">
+                {doc.title}
+              </h3>
+              <p class="text-pixel-text-muted text-sm mt-1">
+                {doc.description}
+              </p>
+              <div class="flex items-center gap-2 mt-3 text-xs text-pixel-text-muted">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>PDF • {doc.date}</span>
+              </div>
+            </div>
+          </div>
+        </a>
+      ))}
+    </div>
+
+    <div class="mt-12 p-6 bg-pixel-accent/5 border border-pixel-accent/20 rounded-2xl max-w-2xl mx-auto reveal">
+      <div class="flex items-start gap-4">
+        <div class="w-10 h-10 rounded-lg bg-pixel-accent/20 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-pixel-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h4 class="font-semibold text-pixel-text">Une question ?</h4>
+          <p class="text-pixel-text-muted text-sm mt-1">
+            Si vous avez des questions sur nos documents ou souhaitez plus d'informations, n'hésitez pas à nous contacter.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
