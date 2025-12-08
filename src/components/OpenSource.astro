@@ -7,6 +7,20 @@ const projects = [
     github: "https://github.com/Collectif-Pixel/collectif-pixel.fr",
     status: "active",
   },
+  {
+    name: "Okarin",
+    description: "Application d'enregistrement podcast multi-piste. Capture chaque participant en fichier séparé.",
+    tech: ["Tauri", "React", "Cloudflare Workers"],
+    github: "https://github.com/Collectif-Pixel/okarin",
+    status: "wip",
+  },
+  {
+    name: "Eryx",
+    description: "Plateforme de chat IA avec plusieurs LLMs, streaming temps réel et tarification transparente.",
+    tech: ["Nuxt", "Vue", "Cloudflare Workers AI"],
+    github: "https://github.com/Collectif-Pixel/eryx",
+    status: "wip",
+  },
 ];
 ---
 
@@ -38,6 +52,12 @@ const projects = [
               <span class="flex items-center gap-1.5 text-xs font-medium text-green-400">
                 <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
                 Actif
+              </span>
+            )}
+            {project.status === "wip" && (
+              <span class="flex items-center gap-1.5 text-xs font-medium text-amber-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                En cours
               </span>
             )}
           </div>
