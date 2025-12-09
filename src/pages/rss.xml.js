@@ -6,8 +6,8 @@ export async function GET(context) {
     .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
   return rss({
-    title: 'Blog - Collectif Pixel',
-    description: 'Actualités, réflexions sur la tech et coulisses des projets du Collectif Pixel.',
+    title: 'Blog - COLLECTIF PIXEL',
+    description: 'Actualités, réflexions sur la tech et coulisses des projets du COLLECTIF PIXEL.',
     site: context.site,
     items: posts.map((post) => ({
       title: post.data.title,

@@ -13,7 +13,7 @@ interface Props {
 
 const {
   title,
-  description = "Collectif Pixel - Association tech créée par des étudiants passionnés. Podcast, projets open source et transparence.",
+  description = "COLLECTIF PIXEL - Association tech créée par des étudiants passionnés. Podcast, projets open source et transparence.",
   image,
   type = 'website',
   publishedTime,
@@ -32,7 +32,7 @@ const ogImage = image || new URL('/og-default.jpg', Astro.site).toString();
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#0044CC" />
-    <meta name="author" content={author || "Collectif Pixel"} />
+    <meta name="author" content={author || "COLLECTIF PIXEL"} />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href={canonicalURL} />
 
@@ -40,7 +40,7 @@ const ogImage = image || new URL('/og-default.jpg', Astro.site).toString();
     <meta property="og:description" content={description} />
     <meta property="og:type" content={type} />
     <meta property="og:url" content={canonicalURL} />
-    <meta property="og:site_name" content="Collectif Pixel" />
+    <meta property="og:site_name" content="COLLECTIF PIXEL" />
     <meta property="og:locale" content="fr_FR" />
     <meta property="og:image" content={ogImage} />
     <meta property="og:image:width" content="1200" />
@@ -62,7 +62,7 @@ const ogImage = image || new URL('/og-default.jpg', Astro.site).toString();
     <meta name="twitter:image" content={ogImage} />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.jpg" />
-    <link rel="alternate" type="application/rss+xml" title="Blog - Collectif Pixel" href={new URL("/rss.xml", Astro.site)} />
+    <link rel="alternate" type="application/rss+xml" title="Blog - COLLECTIF PIXEL" href={new URL("/rss.xml", Astro.site)} />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

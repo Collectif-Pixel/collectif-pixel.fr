@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./.github/assets/thumbnail.jpg" alt="Collectif Pixel">
+  <img src="./.github/assets/thumbnail.jpg" alt="COLLECTIF PIXEL">
 </div>
 
 <div align="center">
@@ -14,9 +14,9 @@
 
 <br />
 
-## Collectif Pixel
+## COLLECTIF PIXEL
 
-Site vitrine de l'association Collectif Pixel, une association loi 1901 créée par des étudiants passionnés de technologie.
+Site vitrine de l'association COLLECTIF PIXEL, une association loi 1901 créée par des étudiants passionnés de technologie.
 
 - **Podcast** - Pixel Podcast, la tech vue par la nouvelle génération
 - **Open Source** - Tous nos projets sont ouverts et disponibles sur GitHub
