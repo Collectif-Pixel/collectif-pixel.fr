@@ -3,10 +3,11 @@ import { Image } from 'astro:assets';
 import logo from '../assets/logo-pixel.png';
 
 const navLinks = [
-  { href: '#podcast', label: 'Podcast' },
-  { href: '#opensource', label: 'Open Source' },
-  { href: '#transparence', label: 'Transparence' },
-  { href: '#about', label: 'À propos' },
+  { href: '/blog', label: 'Blog' },
+  { href: '/#podcast', label: 'Podcast' },
+  { href: '/#opensource', label: 'Open Source' },
+  { href: '/#transparence', label: 'Transparence' },
+  { href: '/#about', label: 'À propos' },
 ];
 ---
 
@@ -64,7 +65,6 @@ const navLinks = [
     mobileMenu?.classList.toggle('hidden');
   });
 
-  // Close menu when clicking a link
   mobileMenu?.querySelectorAll('a').forEach(link => {
     link.addEventListener('click', () => {
       mobileMenu?.classList.add('hidden');
