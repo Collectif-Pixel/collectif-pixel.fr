@@ -30,7 +30,6 @@ body {
   color: white;
 }
 
-/* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -48,7 +47,6 @@ body {
   background: var(--color-pixel-accent);
 }
 
-/* Scroll animations */
 .reveal {
   opacity: 0;
   transform: translateY(40px);
@@ -93,7 +91,6 @@ body {
   transform: scale(1);
 }
 
-/* Stagger children animations */
 .stagger-children > * {
   opacity: 0;
   transform: translateY(20px);
