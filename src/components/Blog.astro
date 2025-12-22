@@ -33,7 +33,7 @@ function formatDate(date: Date) {
       <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12 stagger-children">
         {posts.map((post) => (
           <a
-            href={`/blog/${post.id}`}
+            href={`/blog/${post.id}/`}
             class="group bg-pixel-gray border border-pixel-gray-light rounded-2xl hover:border-pixel-accent/50 transition-all hover:scale-[1.02] overflow-hidden"
           >
             {post.data.image ? (
@@ -91,7 +91,7 @@ function formatDate(date: Date) {
 
     <div class="flex flex-wrap justify-center gap-4 reveal">
       <a
-        href="/blog"
+        href="/blog/"
         class="inline-flex items-center gap-3 px-6 py-3 bg-pixel-accent hover:bg-pixel-accent-light text-white font-medium rounded-xl transition-all"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
