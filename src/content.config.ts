@@ -11,6 +11,13 @@ const blog = defineCollection({
     tags: z.array(z.string()).default([]),
     draft: z.boolean().default(false),
     image: image().optional(),
+    video: z.object({
+      youtubeId: z.string(),
+      title: z.string(),
+      description: z.string(),
+      uploadDate: z.coerce.date(),
+      duration: z.string().optional(), // Format ISO 8601: PT1H30M (1h30)
+    }).optional(),
   })
 });
 
