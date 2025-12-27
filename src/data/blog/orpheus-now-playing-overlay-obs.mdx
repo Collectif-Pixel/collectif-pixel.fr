@@ -1,0 +1,71 @@
+---
+title: "Orpheus : l'overlay Now Playing pour vos streams"
+description: "Affichez en temps réel ce que vous écoutez sur vos streams. Orpheus détecte la musique depuis n'importe quelle app et s'intègre parfaitement à OBS."
+pubDate: 2025-12-27
+image: ./orpheus-now-playing-overlay-obs.jpg
+author: "COLLECTIF PIXEL"
+tags: ["open-source", "streaming", "macos"]
+draft: false
+---
+
+Vous streamez et voulez afficher le morceau en cours sans vous prendre la tête ? On a créé **Orpheus**, un outil open source qui détecte automatiquement la musique depuis n'importe quelle application macOS et l'affiche dans OBS.
+
+## Le problème
+
+La plupart des overlays "Now Playing" existants sont liés à un service spécifique : Spotify, Apple Music, etc. Si vous utilisez Deezer, YouTube Music, ou plusieurs services en parallèle, c'est compliqué.
+
+## La solution
+
+Orpheus utilise l'API MediaRemote native de macOS pour détecter ce qui joue, peu importe l'application. Spotify, Deezer, Apple Music, YouTube dans Safari, VLC... tout fonctionne.
+
+```bash
+# Installation
+brew install collectif-pixel/tap/orpheus
+
+# Lancement
+orpheus start
+
+# C'est tout. Ajoutez http://localhost:4242/now-playing dans OBS.
+```
+
+## Fonctionnalités
+
+- **Détection universelle** — Fonctionne avec toutes les apps média sur macOS
+- **Temps réel** — Mise à jour instantanée via Server-Sent Events
+- **Thèmes** — Installez des thèmes depuis GitHub en une commande
+- **Mode daemon** — Tourne en arrière-plan, pas besoin de terminal ouvert
+
+## Thèmes personnalisables
+
+Orpheus supporte les thèmes communautaires. Installez-en un en une ligne :
+
+```bash
+orpheus add @roseratugo/colorz
+orpheus use @roseratugo/colorz
+```
+
+Le thème Colorz adapte automatiquement sa couleur de fond à la pochette d'album.
+
+Vous pouvez aussi créer le vôtre — c'est juste un fichier HTML qui se connecte à l'API SSE.
+
+## On a besoin de vous
+
+Orpheus est actuellement **macOS only** car il repose sur l'API MediaRemote d'Apple.
+
+**Vous êtes développeur Windows ou Linux ?** On cherche des contributeurs pour porter Orpheus sur ces plateformes. Les APIs existent (MPRIS sur Linux, Windows Media Session sur Windows), il faut "juste" les implémenter.
+
+Même si vous n'êtes pas dev, vous pouvez :
+- Créer et partager des thèmes
+- Remonter des bugs
+- Suggérer des fonctionnalités
+- Parler d'Orpheus autour de vous
+
+## Liens
+
+- **GitHub** : [github.com/Collectif-Pixel/orpheus](https://github.com/Collectif-Pixel/orpheus)
+- **Installation** : `brew install collectif-pixel/tap/orpheus`
+- **Documentation** : Dans le README du repo
+
+---
+
+Orpheus est 100% open source sous licence MIT. Venez contribuer !
