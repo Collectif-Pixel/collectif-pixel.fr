@@ -92,7 +92,8 @@ jobs:
               if (lines.length < 3) continue;
 
               const hash = lines[0];
-              const dateISO = lines[1].split('T')[0];
+              const timestamp = lines[1];
+              const dateISO = timestamp.split('T')[0];
               const email = lines[2];
               const message = lines.slice(3).join('\n');
 
@@ -126,6 +127,7 @@ jobs:
               commitEntries.push({
                 type: 'commit',
                 date: dateISO,
+                timestamp,
                 sha,
                 url,
                 subject,
@@ -158,10 +160,11 @@ jobs:
               if (dataMatch) {
                 for (const line of dataMatch[1].trim().split('\n')) {
                   const parts = line.split('|');
-                  if (parts.length === 7) {
+                  if (parts.length >= 7) {
                     reviewEntries.push({
                       type: 'review',
                       date: parts[0],
+                      timestamp: parts.length >= 8 ? parts[7] : parts[0] + 'T00:00:00Z',
                       id: parts[1],
                       url: parts[2],
                       subject: parts[3],
@@ -194,6 +197,7 @@ jobs:
                   reviewEntries.push({
                     type: 'review',
                     date: dateISO,
+                    timestamp: review.submitted_at,
                     id: reviewId,
                     url: review.html_url,
                     subject: `Review PR ${prNumber}: ${pr.title}`,
@@ -219,7 +223,7 @@ jobs:
               return;
             }
 
-            allEntries.sort((a, b) => b.date.localeCompare(a.date));
+            allEntries.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
             const totalMinutes = allEntries.reduce((sum, e) => sum + e.minutes, 0);
 
@@ -309,7 +313,7 @@ jobs:
                 const entriesCol = showEntries ? ` | **${data.count}**` : '';
                 rows += `| **${label}** | | **${formatTime(data.minutes)}** | ${formatTime(data.dev)} | ${formatTime(data.review)} | \`${progressBar(ratio)}\`${pctStr}${entriesCol} |\n`;
                 const sortedAuthors = Object.entries(data.authors).sort((a, b) => b[1].total - a[1].total);
-                if (sortedAuthors.length > 1) {
+                if (sortedAuthors.length >= 1) {
                   for (const [author, a] of sortedAuthors) {
                     const eCol = showEntries ? ' |' : '';
                     rows += `| | @${author} | ${formatTime(a.total)} | ${formatTime(a.dev)} | ${formatTime(a.review)} |${eCol} |\n`;
@@ -394,7 +398,7 @@ jobs:
 
             // Hidden review data (commits are re-parsed from git, reviews need persistence)
             const reviewDataLines = reviewEntries.map(e =>
-              `${e.date}|${e.id}|${e.url}|${e.subject}|${e.issue}|${e.time}|${e.author}`
+              `${e.date}|${e.id}|${e.url}|${e.subject}|${e.issue}|${e.time}|${e.author}|${e.timestamp}`
             );
             report += `<!-- REVIEWS_DATA\n${reviewDataLines.join('\n')}\nREVIEWS_DATA -->`;
 
