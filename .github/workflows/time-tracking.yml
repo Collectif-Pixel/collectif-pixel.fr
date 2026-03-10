@@ -75,11 +75,12 @@ jobs:
             const { execSync } = require('child_process');
             const SEP = '---COMMIT---';
             const raw = execSync(
-              `git log --format="${SEP}%n%H%n%aI%n%ae%n%B" HEAD`,
+              `git log --all --format="${SEP}%n%H%n%aI%n%ae%n%B"`,
               { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
             );
 
             const commitEntries = [];
+            const seenSha = new Set();
             const commitBlocks = raw.split(SEP).filter(Boolean);
 
             for (const block of commitBlocks) {
@@ -92,14 +93,17 @@ jobs:
               const email = lines[2];
               const message = lines.slice(3).join('\n');
 
+              const sha = hash.substring(0, 7);
+              if (seenSha.has(sha)) continue;
+
               const timeMatch = message.match(/Time-spent:\s*(.+)/i);
               if (!timeMatch) continue;
 
+              seenSha.add(sha);
               const time = timeMatch[1].trim();
               const issueMatch = message.match(/Refs:\s*#(\d+)/i);
               const issue = issueMatch ? `#${issueMatch[1]}` : '-';
               const subject = message.split('\n')[0];
-              const sha = hash.substring(0, 7);
               const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${hash}`;
 
               let author = emailToUsername[email];
@@ -208,10 +212,7 @@ jobs:
             // =============================================
             // 3. MERGE & BUILD REPORT
             // =============================================
-            const allEntries = [
-              ...commitEntries.map(e => ({ ...e, sortKey: `${e.date}-${e.sha}` })),
-              ...reviewEntries.map(e => ({ ...e, sortKey: `${e.date}-${e.id}` })),
-            ];
+            const allEntries = [...commitEntries, ...reviewEntries];
 
             if (allEntries.length === 0) {
               console.log('No time entries found.');
@@ -373,11 +374,15 @@ jobs:
             const yearHeader = `| Année | Auteur | Total | Dev | Review |\n|-------|--------|-------|-----|--------|\n`;
             report += `\n` + renderSection('Par année', yearHeader, yearItems);
 
-            // Detail (collapsed)
-            report += `\n<details>\n<summary><strong>Toutes les entries</strong> — ${allEntries.length} entries</summary>\n\n`;
+            // Detail (collapsed, truncated to stay under GitHub issue body limit)
+            const MAX_DETAIL_ENTRIES = 200;
+            const displayEntries = allEntries.slice(0, MAX_DETAIL_ENTRIES);
+            const truncated = allEntries.length > MAX_DETAIL_ENTRIES;
+            const truncLabel = truncated ? ` (${MAX_DETAIL_ENTRIES} plus récentes sur ${allEntries.length})` : '';
+            report += `\n<details>\n<summary><strong>Toutes les entries</strong> — ${allEntries.length} entries${truncLabel}</summary>\n\n`;
             report += `| Date | Type | Description | Issue / PR | Temps | Auteur |\n`;
             report += `|------|------|-------------|------------|-------|--------|\n`;
-            for (const e of allEntries) {
+            for (const e of displayEntries) {
               const icon = e.type === 'review' ? '👁️ Review' : '💻 Commit';
               const link = e.type === 'commit'
                 ? `[\`${e.sha}\`](${e.url}) ${e.subject}`
