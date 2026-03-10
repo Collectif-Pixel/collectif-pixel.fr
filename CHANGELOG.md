@@ -1,3 +1,9 @@
+## 1.2.4 (2026-03-10)
+
+
+- ci: increase time tracking action
+- Time-spent: 15m
+
 ## 1.2.3 (2026-03-10)
 
 
