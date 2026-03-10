@@ -289,8 +289,8 @@ jobs:
             }
 
             // By issue
-            report += `\n### Par issue\n\n`;
-            report += `| Issue | Temps | | Entries |\n`;
+            report += `\n### Par issue / PR\n\n`;
+            report += `| Issue / PR | Temps | | Entries |\n`;
             report += `|-------|-------|---|--------|\n`;
             const sortedIssues = Object.entries(byIssue).sort((a, b) => b[1].minutes - a[1].minutes);
             for (const [issue, data] of sortedIssues) {
@@ -311,7 +311,7 @@ jobs:
 
             // Detail (collapsed)
             report += `\n<details>\n<summary><strong>Toutes les entries</strong> — ${allEntries.length} entries</summary>\n\n`;
-            report += `| Date | Type | Description | Issue | Temps | Auteur |\n`;
+            report += `| Date | Type | Description | Issue / PR | Temps | Auteur |\n`;
             report += `|------|------|-------------|-------|-------|--------|\n`;
             for (const e of allEntries) {
               const icon = e.type === 'review' ? '👁️ Review' : '💻 Commit';
