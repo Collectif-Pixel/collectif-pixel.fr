@@ -305,11 +305,11 @@ jobs:
             // --- Render helper: table with limit + collapsed overflow ---
             const LIMIT = 6;
 
-            function renderRows(items, maxMinutes, { showEntries = false, showPct = false } = {}) {
+            function renderRows(items, maxMinutes, { showEntries = false } = {}) {
               let rows = '';
               for (const [label, data] of items) {
                 const ratio = maxMinutes > 0 ? data.minutes / maxMinutes : 0;
-                const pctStr = showPct ? ` ${Math.round(data.minutes / totalMinutes * 100)}%` : '';
+                const pctStr = ` ${Math.round(ratio * 100)}%`;
                 const entriesCol = showEntries ? ` | **${data.count}**` : '';
                 rows += `| **${label}** | | **${formatTime(data.minutes)}** | ${formatTime(data.dev)} | ${formatTime(data.review)} | \`${progressBar(ratio)}\`${pctStr}${entriesCol} |\n`;
                 const sortedAuthors = Object.entries(data.authors).sort((a, b) => b[1].total - a[1].total);
@@ -367,7 +367,7 @@ jobs:
             const sortedIssues = Object.entries(byIssue).sort((a, b) => b[1].minutes - a[1].minutes);
             const issueItems = sortedIssues.map(([issue, data]) => [issue, data]);
             const issueHeader = `| Issue / PR | Auteur | Total | Dev | Review | | Entries |\n|------------|--------|-------|-----|--------|---|--------|\n`;
-            report += `\n` + renderSection('Par issue / PR', issueHeader, issueItems, totalMinutes, { showEntries: true, showPct: true });
+            report += `\n` + renderSection('Par issue / PR', issueHeader, issueItems, totalMinutes, { showEntries: true });
 
             // By month
             const sortedMonths = [...byMonth.entries()].sort((a, b) => b[0].localeCompare(a[0]));
