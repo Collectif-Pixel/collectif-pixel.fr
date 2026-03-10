@@ -63,6 +63,14 @@ jobs:
               'Juillet', 'Aout', 'Septembre', 'Octobre', 'Novembre', 'Decembre'
             ];
 
+            // --- Build email→username map from push event ---
+            const emailToUsername = {};
+            for (const commit of (context.payload.commits || [])) {
+              if (commit.author.email && commit.author.username) {
+                emailToUsername[commit.author.email] = commit.author.username;
+              }
+            }
+
             // --- Parse ALL commits from git log ---
             const { execSync } = require('child_process');
             const SEP = '---COMMIT---';
@@ -93,23 +101,23 @@ jobs:
               const sha = hash.substring(0, 7);
               const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${hash}`;
 
-              // Resolve GitHub username from email (with cache)
-              if (!this.emailCache) this.emailCache = {};
-              let author = email;
-              if (this.emailCache[email]) {
-                author = this.emailCache[email];
-              } else {
+              // Resolve username: push event map → GitHub API → email prefix
+              let author = emailToUsername[email];
+              if (!author) {
                 try {
-                  const { data } = await github.rest.search.users({ q: `${email} in:email`, per_page: 1 });
-                  if (data.items.length > 0) {
-                    author = data.items[0].login;
+                  const { data } = await github.rest.repos.listCommits({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    sha: hash,
+                    per_page: 1,
+                  });
+                  if (data[0]?.author?.login) {
+                    author = data[0].author.login;
+                    emailToUsername[email] = author;
                   }
-                } catch (e) {
-                  // Fallback: use email prefix
-                  author = email.split('@')[0];
-                }
-                this.emailCache[email] = author;
+                } catch (e) {}
               }
+              if (!author) author = email.split('@')[0];
 
               allEntries.push({
                 date: dateISO,
