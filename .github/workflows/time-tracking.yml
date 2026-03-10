@@ -67,7 +67,7 @@ jobs:
             const { execSync } = require('child_process');
             const SEP = '---COMMIT---';
             const raw = execSync(
-              `git log --format="${SEP}%n%H%n%aI%n%an%n%B" HEAD`,
+              `git log --format="${SEP}%n%H%n%aI%n%ae%n%B" HEAD`,
               { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
             );
 
@@ -80,7 +80,7 @@ jobs:
 
               const hash = lines[0];
               const dateISO = lines[1].split('T')[0];
-              const author = lines[2];
+              const email = lines[2];
               const message = lines.slice(3).join('\n');
 
               const timeMatch = message.match(/Time-spent:\s*(.+)/i);
@@ -92,6 +92,24 @@ jobs:
               const subject = message.split('\n')[0];
               const sha = hash.substring(0, 7);
               const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${hash}`;
+
+              // Resolve GitHub username from email (with cache)
+              if (!this.emailCache) this.emailCache = {};
+              let author = email;
+              if (this.emailCache[email]) {
+                author = this.emailCache[email];
+              } else {
+                try {
+                  const { data } = await github.rest.search.users({ q: `${email} in:email`, per_page: 1 });
+                  if (data.items.length > 0) {
+                    author = data.items[0].login;
+                  }
+                } catch (e) {
+                  // Fallback: use email prefix
+                  author = email.split('@')[0];
+                }
+                this.emailCache[email] = author;
+              }
 
               allEntries.push({
                 date: dateISO,
