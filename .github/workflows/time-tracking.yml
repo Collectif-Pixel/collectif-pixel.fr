@@ -229,42 +229,61 @@ jobs:
             const thisWeekEntries = allEntries.filter(e => e.date >= mondayThisWeek);
             const thisWeekMinutes = thisWeekEntries.reduce((sum, e) => sum + e.minutes, 0);
 
-            // By issue
+            // By issue (with per-author breakdown)
             const byIssue = {};
             for (const e of allEntries) {
-              if (!byIssue[e.issue]) byIssue[e.issue] = { minutes: 0, count: 0 };
+              if (!byIssue[e.issue]) byIssue[e.issue] = { minutes: 0, count: 0, authors: {} };
               byIssue[e.issue].minutes += e.minutes;
               byIssue[e.issue].count++;
+              if (!byIssue[e.issue].authors[e.author]) byIssue[e.issue].authors[e.author] = 0;
+              byIssue[e.issue].authors[e.author] += e.minutes;
             }
 
-            // By month
+            // By month (with per-author dev/review breakdown)
             const byMonth = new Map();
             for (const e of allEntries) {
               const d = new Date(e.date + 'T00:00:00Z');
               const key = `${monthNames[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-              byMonth.set(key, (byMonth.get(key) || 0) + e.minutes);
+              if (!byMonth.has(key)) byMonth.set(key, { minutes: 0, dev: 0, review: 0, authors: {} });
+              const m = byMonth.get(key);
+              m.minutes += e.minutes;
+              if (e.type === 'review') m.review += e.minutes; else m.dev += e.minutes;
+              if (!m.authors[e.author]) m.authors[e.author] = { total: 0, dev: 0, review: 0 };
+              m.authors[e.author].total += e.minutes;
+              if (e.type === 'review') m.authors[e.author].review += e.minutes; else m.authors[e.author].dev += e.minutes;
             }
 
-            // By type (dev vs review)
-            const devMinutes = commitEntries.reduce((sum, e) => sum + e.minutes, 0);
-            const reviewMinutes = reviewEntries.reduce((sum, e) => sum + e.minutes, 0);
+            // By week (with per-author breakdown)
+            function getWeekLabel(date) {
+              const d = new Date(date + 'T00:00:00Z');
+              const monday = new Date(d);
+              const day = monday.getUTCDay();
+              monday.setUTCDate(monday.getUTCDate() - day + (day === 0 ? -6 : 1));
+              const sunday = new Date(monday);
+              sunday.setUTCDate(sunday.getUTCDate() + 6);
+              const fm = `${String(monday.getUTCDate()).padStart(2,'0')}/${String(monday.getUTCMonth()+1).padStart(2,'0')}`;
+              const fs = `${String(sunday.getUTCDate()).padStart(2,'0')}/${String(sunday.getUTCMonth()+1).padStart(2,'0')}/${sunday.getUTCFullYear()}`;
+              return `${fm} → ${fs}`;
+            }
+            function getWeekSortKey(date) {
+              return getMonday(new Date(date + 'T00:00:00Z'));
+            }
 
-            // By author
-            const byAuthor = {};
+            const byWeek = new Map();
             for (const e of allEntries) {
-              if (!byAuthor[e.author]) byAuthor[e.author] = { dev: 0, review: 0, total: 0, count: 0 };
-              byAuthor[e.author].total += e.minutes;
-              byAuthor[e.author].count++;
-              if (e.type === 'review') byAuthor[e.author].review += e.minutes;
-              else byAuthor[e.author].dev += e.minutes;
+              const key = getWeekSortKey(e.date);
+              if (!byWeek.has(key)) byWeek.set(key, { label: getWeekLabel(e.date), minutes: 0, dev: 0, review: 0, count: 0, authors: {} });
+              const w = byWeek.get(key);
+              w.minutes += e.minutes;
+              w.count++;
+              if (e.type === 'review') w.review += e.minutes; else w.dev += e.minutes;
+              if (!w.authors[e.author]) w.authors[e.author] = { total: 0, dev: 0, review: 0 };
+              w.authors[e.author].total += e.minutes;
+              if (e.type === 'review') w.authors[e.author].review += e.minutes; else w.authors[e.author].dev += e.minutes;
             }
 
             // --- Render ---
             let report = `# Time Tracking Report\n\n`;
-
-            report += `| Total | Dev | Review | Cette semaine | Entries |\n`;
-            report += `|-------|-----|--------|---------------|--------|\n`;
-            report += `| **${formatTime(totalMinutes)}** | ${formatTime(devMinutes)} | ${formatTime(reviewMinutes)} | **${formatTime(thisWeekMinutes)}** | **${allEntries.length}** |\n\n`;
 
             // This week (collapsed)
             if (thisWeekEntries.length > 0) {
@@ -277,36 +296,54 @@ jobs:
               report += `\n</details>\n\n`;
             }
 
-            // By author
-            report += `### Par auteur\n\n`;
-            report += `| Auteur | Total | Dev | Review | | Entries |\n`;
-            report += `|--------|-------|-----|--------|---|--------|\n`;
-            const sortedAuthors = Object.entries(byAuthor).sort((a, b) => b[1].total - a[1].total);
-            for (const [author, data] of sortedAuthors) {
-              const ratio = totalMinutes > 0 ? data.total / totalMinutes : 0;
-              const pct = Math.round(ratio * 100);
-              report += `| @${author} | ${formatTime(data.total)} | ${formatTime(data.dev)} | ${formatTime(data.review)} | \`${progressBar(ratio)}\` ${pct}% | ${data.count} |\n`;
+            // By week
+            report += `### Par semaine\n\n`;
+            report += `| Semaine | Auteur | Total | Dev | Review | | Entries |\n`;
+            report += `|---------|--------|-------|-----|--------|---|--------|\n`;
+            const sortedWeeks = [...byWeek.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+            const maxWeekMinutes = Math.max(...sortedWeeks.map(([,w]) => w.minutes));
+            for (const [, data] of sortedWeeks) {
+              const ratio = maxWeekMinutes > 0 ? data.minutes / maxWeekMinutes : 0;
+              report += `| **${data.label}** | | **${formatTime(data.minutes)}** | ${formatTime(data.dev)} | ${formatTime(data.review)} | \`${progressBar(ratio)}\` | **${data.count}** |\n`;
+              const sortedAuthors = Object.entries(data.authors).sort((a, b) => b[1].total - a[1].total);
+              if (sortedAuthors.length > 1) {
+                for (const [author, a] of sortedAuthors) {
+                  report += `| | @${author} | ${formatTime(a.total)} | ${formatTime(a.dev)} | ${formatTime(a.review)} | | |\n`;
+                }
+              }
             }
 
             // By issue
             report += `\n### Par issue / PR\n\n`;
-            report += `| Issue / PR | Temps | | Entries |\n`;
-            report += `|-------|-------|---|--------|\n`;
+            report += `| Issue / PR | Auteur | Temps | | Entries |\n`;
+            report += `|------------|--------|-------|---|--------|\n`;
             const sortedIssues = Object.entries(byIssue).sort((a, b) => b[1].minutes - a[1].minutes);
             for (const [issue, data] of sortedIssues) {
               const ratio = totalMinutes > 0 ? data.minutes / totalMinutes : 0;
               const pct = Math.round(ratio * 100);
-              report += `| ${issue} | ${formatTime(data.minutes)} | \`${progressBar(ratio)}\` ${pct}% | ${data.count} |\n`;
+              report += `| **${issue}** | | **${formatTime(data.minutes)}** | \`${progressBar(ratio)}\` ${pct}% | **${data.count}** |\n`;
+              const sortedAuthors = Object.entries(data.authors).sort((a, b) => b[1] - a[1]);
+              if (sortedAuthors.length > 1) {
+                for (const [author, mins] of sortedAuthors) {
+                  report += `| | @${author} | ${formatTime(mins)} | | |\n`;
+                }
+              }
             }
 
             // By month
             report += `\n### Par mois\n\n`;
-            report += `| Mois | Temps | |\n`;
-            report += `|------|-------|---|\n`;
-            const maxMonthMinutes = Math.max(...byMonth.values());
-            for (const [month, minutes] of byMonth) {
-              const ratio = maxMonthMinutes > 0 ? minutes / maxMonthMinutes : 0;
-              report += `| ${month} | ${formatTime(minutes)} | \`${progressBar(ratio)}\` |\n`;
+            report += `| Mois | Auteur | Total | Dev | Review | |\n`;
+            report += `|------|--------|-------|-----|--------|---|\n`;
+            const maxMonthMinutes = Math.max(...[...byMonth.values()].map(m => m.minutes));
+            for (const [month, data] of byMonth) {
+              const ratio = maxMonthMinutes > 0 ? data.minutes / maxMonthMinutes : 0;
+              report += `| **${month}** | | **${formatTime(data.minutes)}** | ${formatTime(data.dev)} | ${formatTime(data.review)} | \`${progressBar(ratio)}\` |\n`;
+              const sortedAuthors = Object.entries(data.authors).sort((a, b) => b[1].total - a[1].total);
+              if (sortedAuthors.length > 1) {
+                for (const [author, a] of sortedAuthors) {
+                  report += `| | @${author} | ${formatTime(a.total)} | ${formatTime(a.dev)} | ${formatTime(a.review)} | |\n`;
+                }
+              }
             }
 
             // Detail (collapsed)
