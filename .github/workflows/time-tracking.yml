@@ -2,7 +2,6 @@ name: Time Tracking
 
 on:
   push:
-    branches: [main]
   pull_request_review:
     types: [submitted]
 
@@ -241,12 +240,13 @@ jobs:
               if (e.type === 'review') byIssue[e.issue].authors[e.author].review += e.minutes; else byIssue[e.issue].authors[e.author].dev += e.minutes;
             }
 
-            // By month (with per-author dev/review breakdown)
+            // By month (with per-author dev/review breakdown, sortable key)
             const byMonth = new Map();
             for (const e of allEntries) {
               const d = new Date(e.date + 'T00:00:00Z');
-              const key = `${monthNames[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-              if (!byMonth.has(key)) byMonth.set(key, { minutes: 0, dev: 0, review: 0, authors: {} });
+              const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+              const label = `${monthNames[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+              if (!byMonth.has(key)) byMonth.set(key, { label, minutes: 0, dev: 0, review: 0, authors: {} });
               const m = byMonth.get(key);
               m.minutes += e.minutes;
               if (e.type === 'review') m.review += e.minutes; else m.dev += e.minutes;
@@ -366,8 +366,8 @@ jobs:
             report += `\n` + renderSection('Par issue / PR', issueHeader, issueItems, totalMinutes, { showEntries: true, showPct: true });
 
             // By month
-            const sortedMonths = [...byMonth.entries()];
-            const monthItems = sortedMonths.map(([month, data]) => [month, data]);
+            const sortedMonths = [...byMonth.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+            const monthItems = sortedMonths.map(([, data]) => [data.label, data]);
             const maxMonthMinutes = Math.max(...sortedMonths.map(([,m]) => m.minutes));
             const monthHeader = `| Mois | Auteur | Total | Dev | Review | |\n|------|--------|-------|-----|--------|---|\n`;
             report += `\n` + renderSection('Par mois', monthHeader, monthItems, maxMonthMinutes);
