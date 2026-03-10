@@ -146,14 +146,14 @@ jobs:
             report += `|-------|---------------|--------|\n`;
             report += `| **${formatTime(totalMinutes)}** | **${formatTime(thisWeekMinutes)}** | **${allEntries.length}** |\n\n`;
 
-            // This week detail
+            // This week detail (collapsed)
             if (thisWeekEntries.length > 0) {
-              report += `### Cette semaine\n\n`;
+              report += `<details>\n<summary><strong>Cette semaine</strong> — ${formatTime(thisWeekMinutes)} (${thisWeekEntries.length} commits)</summary>\n\n`;
               for (const e of thisWeekEntries) {
                 const issueTag = e.issue !== '-' ? ` (${e.issue})` : '';
                 report += `- \`${e.time}\` ${e.subject}${issueTag}\n`;
               }
-              report += `\n`;
+              report += `\n</details>\n\n`;
             }
 
             // By issue with progress bar
@@ -177,13 +177,14 @@ jobs:
               report += `| ${month} | ${formatTime(minutes)} | \`${progressBar(ratio)}\` |\n`;
             }
 
-            // Detail table
-            report += `\n### Commits\n\n`;
+            // Detail table (collapsed)
+            report += `\n<details>\n<summary><strong>Commits</strong> — ${allEntries.length} entries</summary>\n\n`;
             report += `| Date | Commit | Issue | Temps | Auteur |\n`;
             report += `|------|--------|-------|-------|--------|\n`;
             for (const e of allEntries) {
               report += `| ${toFRDate(e.date)} | [\`${e.sha}\`](${e.url}) ${e.subject} | ${e.issue} | ${e.time} | @${e.author} |\n`;
             }
+            report += `\n</details>`;
 
             // --- Find or create the tracking issue ---
             const { data: issues } = await github.rest.issues.listForRepo({
