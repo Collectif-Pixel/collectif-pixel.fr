@@ -1,0 +1,120 @@
+name: Time Tracking
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  track-time:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Parse commits and update time tracking issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const TRACKING_ISSUE_LABEL = 'time-tracking';
+
+            // Find or create the tracking issue
+            let trackingIssue;
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: TRACKING_ISSUE_LABEL,
+              state: 'open',
+            });
+
+            if (issues.length === 0) {
+              const { data: created } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Time Tracking Report',
+                labels: [TRACKING_ISSUE_LABEL],
+                body: '# Time Tracking Report\n\nThis issue is automatically updated with time spent on commits.\n\n| Date | Commit | Issue | Time | Author |\n|------|--------|-------|------|--------|\n',
+              });
+              trackingIssue = created;
+            } else {
+              trackingIssue = issues[0];
+            }
+
+            // Parse commits from push
+            const commits = context.payload.commits || [];
+            const entries = [];
+
+            for (const commit of commits) {
+              const message = commit.message;
+              const timeMatch = message.match(/Time-spent:\s*(.+)/i);
+              if (!timeMatch) continue;
+
+              const time = timeMatch[1].trim();
+              const issueMatch = message.match(/Refs:\s*#(\d+)/i);
+              const issue = issueMatch ? `#${issueMatch[1]}` : '-';
+              const subject = message.split('\n')[0];
+              const sha = commit.id.substring(0, 7);
+              const date = new Date(commit.timestamp).toLocaleDateString('fr-FR');
+              const author = commit.author.username || commit.author.name;
+
+              entries.push(`| ${date} | [\`${sha}\`](${commit.url}) ${subject} | ${issue} | ${time} | @${author} |`);
+            }
+
+            if (entries.length === 0) {
+              console.log('No commits with Time-spent found.');
+              return;
+            }
+
+            // Parse existing total from issue body
+            function parseTime(str) {
+              let minutes = 0;
+              const h = str.match(/(\d+)\s*h/i);
+              const m = str.match(/(\d+)\s*m(?:in)?/i);
+              if (h) minutes += parseInt(h[1]) * 60;
+              if (m) minutes += parseInt(m[1]);
+              return minutes;
+            }
+
+            function formatTime(minutes) {
+              const h = Math.floor(minutes / 60);
+              const m = minutes % 60;
+              if (h === 0) return `${m}m`;
+              if (m === 0) return `${h}h`;
+              return `${h}h${m.toString().padStart(2, '0')}`;
+            }
+
+            // Calculate new time from this push
+            let newMinutes = 0;
+            for (const commit of commits) {
+              const timeMatch = commit.message.match(/Time-spent:\s*(.+)/i);
+              if (timeMatch) newMinutes += parseTime(timeMatch[1].trim());
+            }
+
+            // Get existing total from issue body
+            const totalMatch = trackingIssue.body.match(/\*\*Total:\s*(.+?)\*\*/);
+            const existingMinutes = totalMatch ? parseTime(totalMatch[1]) : 0;
+            const totalMinutes = existingMinutes + newMinutes;
+
+            // Update issue body: append rows and update total
+            let body = trackingIssue.body;
+
+            // Remove old total line if exists
+            body = body.replace(/\n\*\*Total:\s*.+?\*\*/, '');
+
+            // Append new entries
+            body = body.trimEnd() + '\n' + entries.join('\n') + '\n';
+
+            // Add total
+            body += `\n**Total: ${formatTime(totalMinutes)}**`;
+
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: trackingIssue.number,
+              body: body,
+            });
+
+            console.log(`Updated time tracking issue #${trackingIssue.number} with ${entries.length} entries. Total: ${formatTime(totalMinutes)}`);
