@@ -1,3 +1,9 @@
+## 1.2.7 (2026-03-10)
+
+### Bug Fixes
+
+- **ci**: fix github pseudo bug
+
 ## 1.2.6 (2026-03-10)
 
 ### CI/CD
