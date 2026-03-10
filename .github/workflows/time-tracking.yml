@@ -3,23 +3,28 @@ name: Time Tracking
 on:
   push:
     branches: [main]
+  pull_request_review:
+    types: [submitted]
 
 jobs:
   track-time:
     runs-on: ubuntu-latest
     permissions:
       issues: write
+      pull-requests: read
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Parse git log and update time tracking issue
+      - name: Parse time entries and update report
         uses: actions/github-script@v7
         with:
           script: |
             const TRACKING_ISSUE_LABEL = 'time-tracking';
+            const DATA_MARKER_START = '<!-- REVIEWS_DATA';
+            const DATA_MARKER_END = 'REVIEWS_DATA -->';
 
             // --- Helpers ---
             function parseTime(str) {
@@ -63,7 +68,9 @@ jobs:
               'Juillet', 'Aout', 'Septembre', 'Octobre', 'Novembre', 'Decembre'
             ];
 
-            // --- Build email→username map from push event ---
+            // =============================================
+            // 1. COLLECT COMMIT ENTRIES (from git log)
+            // =============================================
             const emailToUsername = {};
             for (const commit of (context.payload.commits || [])) {
               if (commit.author.email && commit.author.username) {
@@ -71,7 +78,6 @@ jobs:
               }
             }
 
-            // --- Parse ALL commits from git log ---
             const { execSync } = require('child_process');
             const SEP = '---COMMIT---';
             const raw = execSync(
@@ -79,7 +85,7 @@ jobs:
               { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
             );
 
-            const allEntries = [];
+            const commitEntries = [];
             const commitBlocks = raw.split(SEP).filter(Boolean);
 
             for (const block of commitBlocks) {
@@ -101,7 +107,6 @@ jobs:
               const sha = hash.substring(0, 7);
               const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${hash}`;
 
-              // Resolve username: push event map → GitHub API → email prefix
               let author = emailToUsername[email];
               if (!author) {
                 try {
@@ -119,7 +124,8 @@ jobs:
               }
               if (!author) author = email.split('@')[0];
 
-              allEntries.push({
+              commitEntries.push({
+                type: 'commit',
                 date: dateISO,
                 sha,
                 url,
@@ -131,19 +137,94 @@ jobs:
               });
             }
 
+            // =============================================
+            // 2. COLLECT REVIEW ENTRIES (from issue data + new event)
+            // =============================================
+
+            // First, find the tracking issue to load existing review data
+            let trackingIssue;
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: TRACKING_ISSUE_LABEL,
+              state: 'open',
+            });
+            trackingIssue = issues.length > 0 ? issues[0] : null;
+
+            // Load existing review entries from hidden data block
+            let reviewEntries = [];
+            if (trackingIssue) {
+              const body = trackingIssue.body || '';
+              const dataMatch = body.match(/<!-- REVIEWS_DATA\n([\s\S]*?)\nREVIEWS_DATA -->/);
+              if (dataMatch) {
+                for (const line of dataMatch[1].trim().split('\n')) {
+                  const parts = line.split('|');
+                  if (parts.length === 7) {
+                    reviewEntries.push({
+                      type: 'review',
+                      date: parts[0],
+                      id: parts[1],
+                      url: parts[2],
+                      subject: parts[3],
+                      issue: parts[4],
+                      time: parts[5],
+                      author: parts[6],
+                      minutes: parseTime(parts[5]),
+                    });
+                  }
+                }
+              }
+            }
+
+            // If this is a review event, add the new review entry
+            if (context.eventName === 'pull_request_review') {
+              const review = context.payload.review;
+              const reviewBody = review.body || '';
+              const timeMatch = reviewBody.match(/Time-spent:\s*(.+)/i);
+
+              if (timeMatch) {
+                const time = timeMatch[1].trim();
+                const pr = context.payload.pull_request;
+                const prNumber = `#${pr.number}`;
+                const reviewId = `r${review.id}`;
+                const dateISO = review.submitted_at.split('T')[0];
+                const author = review.user.login;
+
+                // Deduplicate
+                if (!reviewEntries.some(e => e.id === reviewId)) {
+                  reviewEntries.push({
+                    type: 'review',
+                    date: dateISO,
+                    id: reviewId,
+                    url: review.html_url,
+                    subject: `Review PR ${prNumber}: ${pr.title}`,
+                    issue: prNumber,
+                    time,
+                    author,
+                    minutes: parseTime(time),
+                  });
+                }
+              }
+            }
+
+            // =============================================
+            // 3. MERGE & BUILD REPORT
+            // =============================================
+            const allEntries = [
+              ...commitEntries.map(e => ({ ...e, sortKey: `${e.date}-${e.sha}` })),
+              ...reviewEntries.map(e => ({ ...e, sortKey: `${e.date}-${e.id}` })),
+            ];
+
             if (allEntries.length === 0) {
-              console.log('No commits with Time-spent found in git log.');
+              console.log('No time entries found.');
               return;
             }
 
-            // Sort by date desc
             allEntries.sort((a, b) => b.date.localeCompare(a.date));
 
-            // --- Compute summaries ---
             const totalMinutes = allEntries.reduce((sum, e) => sum + e.minutes, 0);
 
             // This week
-            const today = new Date().toISOString().split('T')[0];
             const mondayThisWeek = getMonday(new Date());
             const thisWeekEntries = allEntries.filter(e => e.date >= mondayThisWeek);
             const thisWeekMinutes = thisWeekEntries.reduce((sum, e) => sum + e.minutes, 0);
@@ -164,27 +245,52 @@ jobs:
               byMonth.set(key, (byMonth.get(key) || 0) + e.minutes);
             }
 
-            // --- Render report ---
+            // By type (dev vs review)
+            const devMinutes = commitEntries.reduce((sum, e) => sum + e.minutes, 0);
+            const reviewMinutes = reviewEntries.reduce((sum, e) => sum + e.minutes, 0);
+
+            // By author
+            const byAuthor = {};
+            for (const e of allEntries) {
+              if (!byAuthor[e.author]) byAuthor[e.author] = { dev: 0, review: 0, total: 0, count: 0 };
+              byAuthor[e.author].total += e.minutes;
+              byAuthor[e.author].count++;
+              if (e.type === 'review') byAuthor[e.author].review += e.minutes;
+              else byAuthor[e.author].dev += e.minutes;
+            }
+
+            // --- Render ---
             let report = `# Time Tracking Report\n\n`;
 
-            // Header with totals
-            report += `| Total | Cette semaine | Commits |\n`;
-            report += `|-------|---------------|--------|\n`;
-            report += `| **${formatTime(totalMinutes)}** | **${formatTime(thisWeekMinutes)}** | **${allEntries.length}** |\n\n`;
+            report += `| Total | Dev | Review | Cette semaine | Entries |\n`;
+            report += `|-------|-----|--------|---------------|--------|\n`;
+            report += `| **${formatTime(totalMinutes)}** | ${formatTime(devMinutes)} | ${formatTime(reviewMinutes)} | **${formatTime(thisWeekMinutes)}** | **${allEntries.length}** |\n\n`;
 
-            // This week detail (collapsed)
+            // This week (collapsed)
             if (thisWeekEntries.length > 0) {
-              report += `<details>\n<summary><strong>Cette semaine</strong> — ${formatTime(thisWeekMinutes)} (${thisWeekEntries.length} commits)</summary>\n\n`;
+              report += `<details>\n<summary><strong>Cette semaine</strong> — ${formatTime(thisWeekMinutes)} (${thisWeekEntries.length} entries)</summary>\n\n`;
               for (const e of thisWeekEntries) {
                 const issueTag = e.issue !== '-' ? ` (${e.issue})` : '';
-                report += `- \`${e.time}\` ${e.subject}${issueTag}\n`;
+                const icon = e.type === 'review' ? '👁️' : '💻';
+                report += `- ${icon} \`${e.time}\` ${e.subject}${issueTag} — @${e.author}\n`;
               }
               report += `\n</details>\n\n`;
             }
 
-            // By issue with progress bar
-            report += `### Par issue\n\n`;
-            report += `| Issue | Temps | | Commits |\n`;
+            // By author
+            report += `### Par auteur\n\n`;
+            report += `| Auteur | Total | Dev | Review | | Entries |\n`;
+            report += `|--------|-------|-----|--------|---|--------|\n`;
+            const sortedAuthors = Object.entries(byAuthor).sort((a, b) => b[1].total - a[1].total);
+            for (const [author, data] of sortedAuthors) {
+              const ratio = totalMinutes > 0 ? data.total / totalMinutes : 0;
+              const pct = Math.round(ratio * 100);
+              report += `| @${author} | ${formatTime(data.total)} | ${formatTime(data.dev)} | ${formatTime(data.review)} | \`${progressBar(ratio)}\` ${pct}% | ${data.count} |\n`;
+            }
+
+            // By issue
+            report += `\n### Par issue\n\n`;
+            report += `| Issue | Temps | | Entries |\n`;
             report += `|-------|-------|---|--------|\n`;
             const sortedIssues = Object.entries(byIssue).sort((a, b) => b[1].minutes - a[1].minutes);
             for (const [issue, data] of sortedIssues) {
@@ -203,24 +309,27 @@ jobs:
               report += `| ${month} | ${formatTime(minutes)} | \`${progressBar(ratio)}\` |\n`;
             }
 
-            // Detail table (collapsed)
-            report += `\n<details>\n<summary><strong>Commits</strong> — ${allEntries.length} entries</summary>\n\n`;
-            report += `| Date | Commit | Issue | Temps | Auteur |\n`;
-            report += `|------|--------|-------|-------|--------|\n`;
+            // Detail (collapsed)
+            report += `\n<details>\n<summary><strong>Toutes les entries</strong> — ${allEntries.length} entries</summary>\n\n`;
+            report += `| Date | Type | Description | Issue | Temps | Auteur |\n`;
+            report += `|------|------|-------------|-------|-------|--------|\n`;
             for (const e of allEntries) {
-              report += `| ${toFRDate(e.date)} | [\`${e.sha}\`](${e.url}) ${e.subject} | ${e.issue} | ${e.time} | @${e.author} |\n`;
+              const icon = e.type === 'review' ? '👁️ Review' : '💻 Commit';
+              const link = e.type === 'commit'
+                ? `[\`${e.sha}\`](${e.url}) ${e.subject}`
+                : `[Review](${e.url}) ${e.subject}`;
+              report += `| ${toFRDate(e.date)} | ${icon} | ${link} | ${e.issue} | ${e.time} | @${e.author} |\n`;
             }
-            report += `\n</details>`;
+            report += `\n</details>\n\n`;
 
-            // --- Find or create the tracking issue ---
-            const { data: issues } = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: TRACKING_ISSUE_LABEL,
-              state: 'open',
-            });
+            // Hidden review data (commits are re-parsed from git, reviews need persistence)
+            const reviewDataLines = reviewEntries.map(e =>
+              `${e.date}|${e.id}|${e.url}|${e.subject}|${e.issue}|${e.time}|${e.author}`
+            );
+            report += `<!-- REVIEWS_DATA\n${reviewDataLines.join('\n')}\nREVIEWS_DATA -->`;
 
-            if (issues.length === 0) {
+            // --- Update/create issue ---
+            if (!trackingIssue) {
               await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -233,8 +342,8 @@ jobs:
               await github.rest.issues.update({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: issues[0].number,
+                issue_number: trackingIssue.number,
                 body: report,
               });
-              console.log(`Updated #${issues[0].number} — ${allEntries.length} entries, total: ${formatTime(totalMinutes)}`);
+              console.log(`Updated #${trackingIssue.number} — ${allEntries.length} entries, total: ${formatTime(totalMinutes)}`);
             }
