@@ -1,3 +1,9 @@
+## 1.2.5 (2026-03-10)
+
+### CI/CD
+
+- update time tracking github action
+
 ## 1.2.4 (2026-03-10)
 
 
