@@ -284,6 +284,60 @@ jobs:
               if (e.type === 'review') w.authors[e.author].review += e.minutes; else w.authors[e.author].dev += e.minutes;
             }
 
+            // By year (with per-author breakdown)
+            const byYear = new Map();
+            for (const e of allEntries) {
+              const year = e.date.substring(0, 4);
+              if (!byYear.has(year)) byYear.set(year, { minutes: 0, dev: 0, review: 0, count: 0, authors: {} });
+              const y = byYear.get(year);
+              y.minutes += e.minutes;
+              y.count++;
+              if (e.type === 'review') y.review += e.minutes; else y.dev += e.minutes;
+              if (!y.authors[e.author]) y.authors[e.author] = { total: 0, dev: 0, review: 0 };
+              y.authors[e.author].total += e.minutes;
+              if (e.type === 'review') y.authors[e.author].review += e.minutes; else y.authors[e.author].dev += e.minutes;
+            }
+
+            // --- Render helper: table with limit + collapsed overflow ---
+            const LIMIT = 6;
+
+            function renderRows(items, maxMinutes, { showEntries = false, showPct = false } = {}) {
+              let rows = '';
+              for (const [label, data] of items) {
+                const ratio = maxMinutes > 0 ? data.minutes / maxMinutes : 0;
+                const pctStr = showPct ? ` ${Math.round(data.minutes / totalMinutes * 100)}%` : '';
+                const entriesCol = showEntries ? ` | **${data.count}**` : '';
+                rows += `| **${label}** | | **${formatTime(data.minutes)}** | ${formatTime(data.dev)} | ${formatTime(data.review)} | \`${progressBar(ratio)}\`${pctStr}${entriesCol} |\n`;
+                const sortedAuthors = Object.entries(data.authors).sort((a, b) => b[1].total - a[1].total);
+                if (sortedAuthors.length > 1) {
+                  for (const [author, a] of sortedAuthors) {
+                    const eCol = showEntries ? ' |' : '';
+                    rows += `| | @${author} | ${formatTime(a.total)} | ${formatTime(a.dev)} | ${formatTime(a.review)} |${eCol} |\n`;
+                  }
+                }
+              }
+              return rows;
+            }
+
+            function renderSection(title, header, items, maxMinutes, opts = {}) {
+              let section = '';
+              const visible = items.slice(0, LIMIT);
+              const collapsed = items.slice(LIMIT);
+
+              section += `### ${title}\n\n`;
+              section += header;
+              section += renderRows(visible, maxMinutes, opts);
+
+              if (collapsed.length > 0) {
+                section += `\n<details>\n<summary><strong>+${collapsed.length} de plus</strong></summary>\n\n`;
+                section += header;
+                section += renderRows(collapsed, maxMinutes, opts);
+                section += `\n</details>\n\n`;
+              }
+
+              return section;
+            }
+
             // --- Render ---
             let report = `# Time Tracking Report\n\n`;
 
@@ -299,59 +353,36 @@ jobs:
             }
 
             // By week
-            report += `### Par semaine\n\n`;
-            report += `| Semaine | Auteur | Total | Dev | Review | | Entries |\n`;
-            report += `|---------|--------|-------|-----|--------|---|--------|\n`;
             const sortedWeeks = [...byWeek.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+            const weekItems = sortedWeeks.map(([, data]) => [data.label, data]);
             const maxWeekMinutes = Math.max(...sortedWeeks.map(([,w]) => w.minutes));
-            for (const [, data] of sortedWeeks) {
-              const ratio = maxWeekMinutes > 0 ? data.minutes / maxWeekMinutes : 0;
-              report += `| **${data.label}** | | **${formatTime(data.minutes)}** | ${formatTime(data.dev)} | ${formatTime(data.review)} | \`${progressBar(ratio)}\` | **${data.count}** |\n`;
-              const sortedAuthors = Object.entries(data.authors).sort((a, b) => b[1].total - a[1].total);
-              if (sortedAuthors.length > 1) {
-                for (const [author, a] of sortedAuthors) {
-                  report += `| | @${author} | ${formatTime(a.total)} | ${formatTime(a.dev)} | ${formatTime(a.review)} | | |\n`;
-                }
-              }
-            }
+            const weekHeader = `| Semaine | Auteur | Total | Dev | Review | | Entries |\n|---------|--------|-------|-----|--------|---|--------|\n`;
+            report += renderSection('Par semaine', weekHeader, weekItems, maxWeekMinutes, { showEntries: true });
 
             // By issue
-            report += `\n### Par issue / PR\n\n`;
-            report += `| Issue / PR | Auteur | Total | Dev | Review | | Entries |\n`;
-            report += `|------------|--------|-------|-----|--------|---|--------|\n`;
             const sortedIssues = Object.entries(byIssue).sort((a, b) => b[1].minutes - a[1].minutes);
-            for (const [issue, data] of sortedIssues) {
-              const ratio = totalMinutes > 0 ? data.minutes / totalMinutes : 0;
-              const pct = Math.round(ratio * 100);
-              report += `| **${issue}** | | **${formatTime(data.minutes)}** | ${formatTime(data.dev)} | ${formatTime(data.review)} | \`${progressBar(ratio)}\` ${pct}% | **${data.count}** |\n`;
-              const sortedAuthors = Object.entries(data.authors).sort((a, b) => b[1].total - a[1].total);
-              if (sortedAuthors.length > 1) {
-                for (const [author, a] of sortedAuthors) {
-                  report += `| | @${author} | ${formatTime(a.total)} | ${formatTime(a.dev)} | ${formatTime(a.review)} | | |\n`;
-                }
-              }
-            }
+            const issueItems = sortedIssues.map(([issue, data]) => [issue, data]);
+            const issueHeader = `| Issue / PR | Auteur | Total | Dev | Review | | Entries |\n|------------|--------|-------|-----|--------|---|--------|\n`;
+            report += `\n` + renderSection('Par issue / PR', issueHeader, issueItems, totalMinutes, { showEntries: true, showPct: true });
 
             // By month
-            report += `\n### Par mois\n\n`;
-            report += `| Mois | Auteur | Total | Dev | Review | |\n`;
-            report += `|------|--------|-------|-----|--------|---|\n`;
-            const maxMonthMinutes = Math.max(...[...byMonth.values()].map(m => m.minutes));
-            for (const [month, data] of byMonth) {
-              const ratio = maxMonthMinutes > 0 ? data.minutes / maxMonthMinutes : 0;
-              report += `| **${month}** | | **${formatTime(data.minutes)}** | ${formatTime(data.dev)} | ${formatTime(data.review)} | \`${progressBar(ratio)}\` |\n`;
-              const sortedAuthors = Object.entries(data.authors).sort((a, b) => b[1].total - a[1].total);
-              if (sortedAuthors.length > 1) {
-                for (const [author, a] of sortedAuthors) {
-                  report += `| | @${author} | ${formatTime(a.total)} | ${formatTime(a.dev)} | ${formatTime(a.review)} | |\n`;
-                }
-              }
-            }
+            const sortedMonths = [...byMonth.entries()];
+            const monthItems = sortedMonths.map(([month, data]) => [month, data]);
+            const maxMonthMinutes = Math.max(...sortedMonths.map(([,m]) => m.minutes));
+            const monthHeader = `| Mois | Auteur | Total | Dev | Review | |\n|------|--------|-------|-----|--------|---|\n`;
+            report += `\n` + renderSection('Par mois', monthHeader, monthItems, maxMonthMinutes);
+
+            // By year
+            const sortedYears = [...byYear.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+            const yearItems = sortedYears.map(([year, data]) => [year, data]);
+            const maxYearMinutes = Math.max(...sortedYears.map(([,y]) => y.minutes));
+            const yearHeader = `| Année | Auteur | Total | Dev | Review | |\n|-------|--------|-------|-----|--------|---|\n`;
+            report += `\n` + renderSection('Par année', yearHeader, yearItems, maxYearMinutes);
 
             // Detail (collapsed)
             report += `\n<details>\n<summary><strong>Toutes les entries</strong> — ${allEntries.length} entries</summary>\n\n`;
             report += `| Date | Type | Description | Issue / PR | Temps | Auteur |\n`;
-            report += `|------|------|-------------|-------|-------|--------|\n`;
+            report += `|------|------|-------------|------------|-------|--------|\n`;
             for (const e of allEntries) {
               const icon = e.type === 'review' ? '👁️ Review' : '💻 Commit';
               const link = e.type === 'commit'
