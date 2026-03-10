@@ -1,0 +1,106 @@
+---
+title: "L'open source en 2026 : on a un problème"
+description: "L'open source est partout. Mais les mainteneurs craquent, l'Europe réglemente, et l'IA noie les projets sous le bruit. On fait le point."
+pubDate: 2026-03-09
+image: ./open-source-2026-on-a-un-probleme.jpg
+author: "Ugo ROSERAT"
+tags: ["open-source", "opinion"]
+draft: false
+---
+
+L'open source est partout. Dans vos apps, vos serveurs, vos pipelines CI/CD. Mais les gens qui maintiennent tout ça craquent, l'Europe débarque avec une nouvelle réglementation, et l'IA noie les projets sous des contributions inutiles. On fait le point.
+
+## Le constat
+
+Plus de 80 % des entreprises considèrent l'open source comme essentiel à leur infrastructure. Normal : il n'existe quasiment plus de stack technique qui ne repose pas sur du code maintenu par des communautés ouvertes. Kubernetes, Rails, Vue.js, PostgreSQL… on connaît la chanson.
+
+Le problème, c'est que derrière cette adoption massive, ceux qui construisent et maintiennent ces projets n'ont souvent ni les moyens financiers, ni le soutien humain pour tenir sur la durée.
+
+## Le Cyber Resilience Act débarque en septembre
+
+Le 11 septembre 2026, une première échéance du Cyber Resilience Act (CRA) européen entre en vigueur. Concrètement, tout éditeur qui commercialise un produit contenant des composants logiciels — y compris open source — devra être capable de signaler les failles de sécurité activement exploitées et avoir un vrai processus de gestion des vulnérabilités en place. L'ensemble des obligations sera pleinement applicable au 11 décembre 2027.
+
+### Ce que ça change
+
+Au départ, le texte ne mentionnait même pas l'open source. Levée de boucliers des fondations Eclipse, OSI, Document Foundation… Depuis, le règlement a été amendé. Voici ce qu'il faut retenir :
+
+- **Contributeurs individuels** — Vous codez un outil le week-end et vous le mettez sur GitHub sans le monétiser ? Vous n'êtes pas concerné. Zéro obligation juridique.
+- **Entreprises (les "manufacturiers")** — Si vous intégrez de l'open source dans un produit commercial vendu sur le marché européen, c'est à vous de maintenir un SBOM (Software Bill of Materials), de surveiller les CVE et de signaler les vulnérabilités. La responsabilité est sur l'intégrateur, pas sur le développeur upstream.
+- **Fondations et organisations (les "open source stewards")** — Régime allégé : politique de cybersécurité, coopération avec les autorités, signalement des vulnérabilités exploitées. Mais pas d'amendes administratives.
+
+La Commission européenne a publié début mars 2026 un projet de guide d'application pour clarifier les zones grises autour de la monétisation indirecte — services payants autour d'un logiciel gratuit, donations conditionnelles, modèles freemium…
+
+### Pourquoi ça nous concerne
+
+Au Collectif Pixel, tous nos projets sont open source et non commerciaux. Le CRA ne nous impose rien directement. Mais en tant que développeurs qui intègrent des dépendances open source tous les jours dans nos projets pro, il faut comprendre ce qui arrive.
+
+Le CRA va mécaniquement augmenter la pression sur les mainteneurs de projets dont on dépend. Plus de demandes de SBOM, de suivi de vulnérabilités, de documentation. Et ça, c'est un vrai souci quand on regarde l'état de ces mainteneurs.
+
+## Les mainteneurs craquent
+
+Novembre 2025. Le projet Kubernetes Ingress NGINX — utilisé par des milliers d'entreprises pour gérer le trafic entrant de leurs clusters — annonce la fin de sa maintenance. Plus aucun correctif de sécurité après mars 2026.
+
+La raison ? Pas une obsolescence technique. Pas un remplacement. Juste l'épuisement des mainteneurs, qui ne pouvaient plus tenir le rythme en bossant bénévolement le soir et le week-end.
+
+Le même mois, External Secrets Operator — un composant critique utilisé à grande échelle — gèle toutes ses mises à jour. Quatre mainteneurs sur cinq en burnout. Le projet avait des sponsors. Il avait du financement. Mais comme l'ont résumé les mainteneurs : *"Money doesn't write code, review pull requests, or manage releases."*
+
+Les chiffres :
+
+- **60 %** des mainteneurs open source ne sont pas rémunérés
+- **73 %** des développeurs déclarent avoir déjà vécu un épisode de burnout
+- **4 200** entreprises contribuent financièrement via GitHub Sponsors — sur **300 millions** qui utilisent de l'open source
+
+Faites le calcul. C'est un taux de freeloading de **99,999 %**.
+
+## L'IA empire les choses
+
+En janvier 2026, trois projets majeurs ont pris des mesures défensives face à ce que les mainteneurs appellent "l'AI slop" :
+
+- **curl** (installé sur ~50 milliards d'appareils) a fermé son programme de bug bounty après 20 faux rapports de sécurité générés par IA en 21 jours. Zéro vraie vulnérabilité.
+- **Ghostty** a mis en place une tolérance zéro envers les contributions IA non vérifiées.
+- **tldraw** est allé plus loin : fermeture automatique de toutes les pull requests externes.
+
+Le problème est simple : l'IA rend trivial le fait de scanner un codebase, de générer un rapport "plausible" ou de soumettre une PR qui a l'air correcte en surface mais qui est cassée. Les mainteneurs — déjà débordés — passent leur temps à trier du bruit au lieu de coder.
+
+Et pendant ce temps, des gens utilisent l'IA pour "stat pad" leur profil GitHub avec des contributions creuses. Le mainteneur, lui, se tape toute la revue. C'est le contraire d'aider.
+
+## 36 millions de nouveaux devs, toujours autant de mainteneurs
+
+Le rapport GitHub Octoverse 2025 montre qu'environ 36 millions de nouveaux développeurs ont rejoint la plateforme en un an. Dont 5,2 millions rien qu'en Inde.
+
+Mais cette croissance ne se traduit pas par plus de gens qui prennent des rôles de maintenance ou de gouvernance. Le nombre de mainteneurs stagne. Les contributions (et le bruit) explosent.
+
+GitHub développe des outils d'IA pour aider à détecter les issues dupliquées et automatiser l'étiquetage. Mais la vraie leçon, c'est que les projets qui tiendront en 2026 ne seront pas ceux qui utilisent l'IA pour écrire du code — ce seront ceux qui l'utilisent pour filtrer le bruit, mettre en lumière les contributions de qualité, et libérer du temps pour les décisions humaines.
+
+## La souveraineté numérique européenne passe par l'open source
+
+L'Europe prend conscience de sa dépendance aux Big Tech américaines. Les tensions autour de la confidentialité des données, les restrictions de voyage qui compliquent la participation aux conférences US, et les politiques commerciales imprévisibles accélèrent les efforts pour un stack technologique européen.
+
+Des initiatives concrètes émergent : suite bureautique européenne basée sur Nextcloud et Collabora Online, renforcement des projets soutenus par la Linux Foundation Europe, investissements dans le cloud souverain…
+
+Mais cette dynamique ne sera durable que si on investit aussi dans les humains derrière le code. Sans mainteneurs soutenus et financés, la souveraineté technologique restera un PowerPoint.
+
+## Des pistes qui existent
+
+Plusieurs initiatives tentent de structurer le financement :
+
+- **Open Source Pledge** (par Sentry) — Minimum 2 000 $/an par dev employé, versé directement aux mainteneurs. Sentry verse 5 813 $ par dev.
+- **Open Source Endowment** — Capital permanent investi, seuls les revenus sont distribués. Modèle inspiré des fonds de dotation universitaires.
+- **HeroDevs** — Fonds de 20 M$ avec des grants de 2 500 à 250 000 $ pour les mainteneurs.
+- **FOSS Funds d'entreprises** — Microsoft, Spotify, Bloomberg ont des programmes internes, mais l'impact reste limité à l'échelle de l'écosystème.
+
+C'est un début. C'est loin d'être suffisant.
+
+## Ce qu'on peut faire à notre échelle
+
+On n'a pas besoin d'attendre les grandes entreprises pour agir. Voici ce qui aide vraiment :
+
+- **Lire la doc avant d'ouvrir une issue.** Basique, mais c'est le premier geste de respect envers un mainteneur.
+- **Faire des contributions de qualité.** Comprendre le projet. Lire les guidelines. Tester son code. Pas de PR générée par une IA sans relecture.
+- **Documenter ses propres projets.** Sur Orpheus, Okarin, Eryx… plus c'est documenté, plus on facilite les contributions extérieures et on allège notre propre charge de maintenance.
+- **Sponsoriser les projets dont on dépend.** Même 5 € par mois, c'est un signal.
+- **En parler.** Dans le podcast, dans des articles, dans nos cercles. Rappeler que derrière chaque `npm install` ou `gem install`, il y a des humains.
+
+---
+
+2026 est une année de vérité pour l'open source. Entre le CRA, le burnout des mainteneurs et l'AI slop, l'écosystème est à un tournant. L'open source a prouvé sa valeur. Maintenant il faut prouver qu'on est capables de le soutenir. Et ça commence par chacun d'entre nous.
