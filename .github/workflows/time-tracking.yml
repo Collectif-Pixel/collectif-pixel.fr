@@ -49,11 +49,6 @@ jobs:
               return `${d}/${m}/${y}`;
             }
 
-            function progressBar(ratio, length = 10) {
-              const filled = Math.round(ratio * length);
-              return '█'.repeat(filled) + '░'.repeat(length - filled);
-            }
-
             function getMonday(date) {
               const d = new Date(date);
               const day = d.getDay();
@@ -305,37 +300,35 @@ jobs:
             // --- Render helper: table with limit + collapsed overflow ---
             const LIMIT = 6;
 
-            function renderRows(items, maxMinutes, { showEntries = false } = {}) {
+            function renderRows(items, { showEntries = false } = {}) {
               let rows = '';
               for (const [label, data] of items) {
-                const ratio = maxMinutes > 0 ? data.minutes / maxMinutes : 0;
-                const pctStr = ` ${Math.round(ratio * 100)}%`;
                 const entriesCol = showEntries ? ` | **${data.count}**` : '';
-                rows += `| **${label}** | | **${formatTime(data.minutes)}** | ${formatTime(data.dev)} | ${formatTime(data.review)} | \`${progressBar(ratio)}\`${pctStr}${entriesCol} |\n`;
+                rows += `| **${label}** | | **${formatTime(data.minutes)}** | ${formatTime(data.dev)} | ${formatTime(data.review)}${entriesCol} |\n`;
                 const sortedAuthors = Object.entries(data.authors).sort((a, b) => b[1].total - a[1].total);
                 if (sortedAuthors.length >= 1) {
                   for (const [author, a] of sortedAuthors) {
                     const eCol = showEntries ? ' |' : '';
-                    rows += `| | @${author} | ${formatTime(a.total)} | ${formatTime(a.dev)} | ${formatTime(a.review)} |${eCol} |\n`;
+                    rows += `| | @${author} | ${formatTime(a.total)} | ${formatTime(a.dev)} | ${formatTime(a.review)}${eCol} |\n`;
                   }
                 }
               }
               return rows;
             }
 
-            function renderSection(title, header, items, maxMinutes, opts = {}) {
+            function renderSection(title, header, items, opts = {}) {
               let section = '';
               const visible = items.slice(0, LIMIT);
               const collapsed = items.slice(LIMIT);
 
               section += `### ${title}\n\n`;
               section += header;
-              section += renderRows(visible, maxMinutes, opts);
+              section += renderRows(visible, opts);
 
               if (collapsed.length > 0) {
                 section += `\n<details>\n<summary><strong>+${collapsed.length} de plus</strong></summary>\n\n`;
                 section += header;
-                section += renderRows(collapsed, maxMinutes, opts);
+                section += renderRows(collapsed, opts);
                 section += `\n</details>\n\n`;
               }
 
@@ -359,29 +352,26 @@ jobs:
             // By week
             const sortedWeeks = [...byWeek.entries()].sort((a, b) => b[0].localeCompare(a[0]));
             const weekItems = sortedWeeks.map(([, data]) => [data.label, data]);
-            const maxWeekMinutes = Math.max(...sortedWeeks.map(([,w]) => w.minutes));
-            const weekHeader = `| Semaine | Auteur | Total | Dev | Review | | Entries |\n|---------|--------|-------|-----|--------|---|--------|\n`;
-            report += renderSection('Par semaine', weekHeader, weekItems, maxWeekMinutes, { showEntries: true });
+            const weekHeader = `| Semaine | Auteur | Total | Dev | Review | Entries |\n|---------|--------|-------|-----|--------|---------|\n`;
+            report += renderSection('Par semaine', weekHeader, weekItems, { showEntries: true });
 
             // By issue
             const sortedIssues = Object.entries(byIssue).sort((a, b) => b[1].minutes - a[1].minutes);
             const issueItems = sortedIssues.map(([issue, data]) => [issue, data]);
-            const issueHeader = `| Issue / PR | Auteur | Total | Dev | Review | | Entries |\n|------------|--------|-------|-----|--------|---|--------|\n`;
-            report += `\n` + renderSection('Par issue / PR', issueHeader, issueItems, totalMinutes, { showEntries: true });
+            const issueHeader = `| Issue / PR | Auteur | Total | Dev | Review | Entries |\n|------------|--------|-------|-----|--------|---------|\n`;
+            report += `\n` + renderSection('Par issue / PR', issueHeader, issueItems, { showEntries: true });
 
             // By month
             const sortedMonths = [...byMonth.entries()].sort((a, b) => b[0].localeCompare(a[0]));
             const monthItems = sortedMonths.map(([, data]) => [data.label, data]);
-            const maxMonthMinutes = Math.max(...sortedMonths.map(([,m]) => m.minutes));
-            const monthHeader = `| Mois | Auteur | Total | Dev | Review | |\n|------|--------|-------|-----|--------|---|\n`;
-            report += `\n` + renderSection('Par mois', monthHeader, monthItems, maxMonthMinutes);
+            const monthHeader = `| Mois | Auteur | Total | Dev | Review |\n|------|--------|-------|-----|--------|\n`;
+            report += `\n` + renderSection('Par mois', monthHeader, monthItems);
 
             // By year
             const sortedYears = [...byYear.entries()].sort((a, b) => b[0].localeCompare(a[0]));
             const yearItems = sortedYears.map(([year, data]) => [year, data]);
-            const maxYearMinutes = Math.max(...sortedYears.map(([,y]) => y.minutes));
-            const yearHeader = `| Année | Auteur | Total | Dev | Review | |\n|-------|--------|-------|-----|--------|---|\n`;
-            report += `\n` + renderSection('Par année', yearHeader, yearItems, maxYearMinutes);
+            const yearHeader = `| Année | Auteur | Total | Dev | Review |\n|-------|--------|-------|-----|--------|\n`;
+            report += `\n` + renderSection('Par année', yearHeader, yearItems);
 
             // Detail (collapsed)
             report += `\n<details>\n<summary><strong>Toutes les entries</strong> — ${allEntries.length} entries</summary>\n\n`;
