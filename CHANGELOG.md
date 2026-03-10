@@ -1,3 +1,12 @@
+## 1.2.2 (2026-03-10)
+
+
+- ci: add time tracking action
+- Time-spent: 40m
+- chore: add commitizen custom rule
+- Refs: #1
+Time-spent: 30m
+
 ## 1.2.1 (2026-03-10)
 
 ## 1.2.0 (2026-03-10)
