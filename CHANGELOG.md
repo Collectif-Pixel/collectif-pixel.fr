@@ -1,3 +1,9 @@
+## 1.2.9 (2026-03-10)
+
+### CI/CD
+
+- improve time tracking action
+
 ## 1.2.8 (2026-03-10)
 
 ### CI/CD
