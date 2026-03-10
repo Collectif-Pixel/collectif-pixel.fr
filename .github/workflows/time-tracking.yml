@@ -15,7 +15,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Parse commits and update time tracking issue
+      - name: Parse git log and update time tracking issue
         uses: actions/github-script@v7
         with:
           script: |
@@ -40,13 +40,22 @@ jobs:
               return `${h}h${m.toString().padStart(2, '0')}`;
             }
 
-            function toISODate(date) {
-              return date.toISOString().split('T')[0];
-            }
-
             function toFRDate(isoDate) {
               const [y, m, d] = isoDate.split('-');
               return `${d}/${m}/${y}`;
+            }
+
+            function progressBar(ratio, length = 10) {
+              const filled = Math.round(ratio * length);
+              return '█'.repeat(filled) + '░'.repeat(length - filled);
+            }
+
+            function getMonday(date) {
+              const d = new Date(date);
+              const day = d.getDay();
+              const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+              d.setDate(diff);
+              return d.toISOString().split('T')[0];
             }
 
             const monthNames = [
@@ -54,87 +63,64 @@ jobs:
               'Juillet', 'Aout', 'Septembre', 'Octobre', 'Novembre', 'Decembre'
             ];
 
-            // --- Find or create the tracking issue ---
-            let trackingIssue;
-            const { data: issues } = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: TRACKING_ISSUE_LABEL,
-              state: 'open',
-            });
+            // --- Parse ALL commits from git log ---
+            const { execSync } = require('child_process');
+            const SEP = '---COMMIT---';
+            const raw = execSync(
+              `git log --format="${SEP}%n%H%n%aI%n%an%n%B" HEAD`,
+              { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
+            );
 
-            if (issues.length === 0) {
-              const { data: created } = await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: 'Time Tracking Report',
-                labels: [TRACKING_ISSUE_LABEL],
-                body: '<!-- DATA\nDATA -->',
-              });
-              trackingIssue = created;
-            } else {
-              trackingIssue = issues[0];
-            }
+            const allEntries = [];
+            const commitBlocks = raw.split(SEP).filter(Boolean);
 
-            // --- Parse existing entries from hidden data block ---
-            const body = trackingIssue.body || '';
-            const dataMatch = body.match(/<!-- DATA\n([\s\S]*?)\nDATA -->/);
-            const existingDataRaw = dataMatch ? dataMatch[1].trim() : '';
+            for (const block of commitBlocks) {
+              const lines = block.trim().split('\n');
+              if (lines.length < 3) continue;
 
-            // Entry format: date|sha|url|subject|issue|time|author
-            let allEntries = [];
-            if (existingDataRaw) {
-              for (const line of existingDataRaw.split('\n')) {
-                const parts = line.split('|');
-                if (parts.length === 7) {
-                  allEntries.push({
-                    date: parts[0],
-                    sha: parts[1],
-                    url: parts[2],
-                    subject: parts[3],
-                    issue: parts[4],
-                    time: parts[5],
-                    author: parts[6],
-                    minutes: parseTime(parts[5]),
-                  });
-                }
-              }
-            }
+              const hash = lines[0];
+              const dateISO = lines[1].split('T')[0];
+              const author = lines[2];
+              const message = lines.slice(3).join('\n');
 
-            // --- Parse new commits ---
-            const commits = context.payload.commits || [];
-            let hasNew = false;
-
-            for (const commit of commits) {
-              const message = commit.message;
               const timeMatch = message.match(/Time-spent:\s*(.+)/i);
               if (!timeMatch) continue;
-
-              // Skip if already tracked (same sha)
-              const sha = commit.id.substring(0, 7);
-              if (allEntries.some(e => e.sha === sha)) continue;
 
               const time = timeMatch[1].trim();
               const issueMatch = message.match(/Refs:\s*#(\d+)/i);
               const issue = issueMatch ? `#${issueMatch[1]}` : '-';
               const subject = message.split('\n')[0];
-              const date = toISODate(new Date(commit.timestamp));
-              const author = commit.author.username || commit.author.name;
+              const sha = hash.substring(0, 7);
+              const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${hash}`;
 
-              allEntries.push({ date, sha, url: commit.url, subject, issue, time, author, minutes: parseTime(time) });
-              hasNew = true;
+              allEntries.push({
+                date: dateISO,
+                sha,
+                url,
+                subject,
+                issue,
+                time,
+                author,
+                minutes: parseTime(time),
+              });
             }
 
-            if (!hasNew) {
-              console.log('No new commits with Time-spent found.');
+            if (allEntries.length === 0) {
+              console.log('No commits with Time-spent found in git log.');
               return;
             }
 
-            // Sort by date desc (most recent first)
+            // Sort by date desc
             allEntries.sort((a, b) => b.date.localeCompare(a.date));
 
             // --- Compute summaries ---
             const totalMinutes = allEntries.reduce((sum, e) => sum + e.minutes, 0);
+
+            // This week
+            const today = new Date().toISOString().split('T')[0];
+            const mondayThisWeek = getMonday(new Date());
+            const thisWeekEntries = allEntries.filter(e => e.date >= mondayThisWeek);
+            const thisWeekMinutes = thisWeekEntries.reduce((sum, e) => sum + e.minutes, 0);
 
             // By issue
             const byIssue = {};
@@ -145,30 +131,50 @@ jobs:
             }
 
             // By month
-            const byMonth = {};
+            const byMonth = new Map();
             for (const e of allEntries) {
               const d = new Date(e.date + 'T00:00:00Z');
               const key = `${monthNames[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-              if (!byMonth[key]) byMonth[key] = 0;
-              byMonth[key] += e.minutes;
+              byMonth.set(key, (byMonth.get(key) || 0) + e.minutes);
             }
 
             // --- Render report ---
             let report = `# Time Tracking Report\n\n`;
-            report += `> **Total: ${formatTime(totalMinutes)}** — ${allEntries.length} commits\n\n`;
 
-            // By issue
+            // Header with totals
+            report += `| Total | Cette semaine | Commits |\n`;
+            report += `|-------|---------------|--------|\n`;
+            report += `| **${formatTime(totalMinutes)}** | **${formatTime(thisWeekMinutes)}** | **${allEntries.length}** |\n\n`;
+
+            // This week detail
+            if (thisWeekEntries.length > 0) {
+              report += `### Cette semaine\n\n`;
+              for (const e of thisWeekEntries) {
+                const issueTag = e.issue !== '-' ? ` (${e.issue})` : '';
+                report += `- \`${e.time}\` ${e.subject}${issueTag}\n`;
+              }
+              report += `\n`;
+            }
+
+            // By issue with progress bar
             report += `### Par issue\n\n`;
-            report += `| Issue | Temps | Commits |\n|-------|-------|---------|\n`;
-            for (const [issue, data] of Object.entries(byIssue).sort((a, b) => b[1].minutes - a[1].minutes)) {
-              report += `| ${issue} | ${formatTime(data.minutes)} | ${data.count} |\n`;
+            report += `| Issue | Temps | | Commits |\n`;
+            report += `|-------|-------|---|--------|\n`;
+            const sortedIssues = Object.entries(byIssue).sort((a, b) => b[1].minutes - a[1].minutes);
+            for (const [issue, data] of sortedIssues) {
+              const ratio = totalMinutes > 0 ? data.minutes / totalMinutes : 0;
+              const pct = Math.round(ratio * 100);
+              report += `| ${issue} | ${formatTime(data.minutes)} | \`${progressBar(ratio)}\` ${pct}% | ${data.count} |\n`;
             }
 
             // By month
             report += `\n### Par mois\n\n`;
-            report += `| Mois | Temps |\n|------|-------|\n`;
-            for (const [month, minutes] of Object.entries(byMonth)) {
-              report += `| ${month} | ${formatTime(minutes)} |\n`;
+            report += `| Mois | Temps | |\n`;
+            report += `|------|-------|---|\n`;
+            const maxMonthMinutes = Math.max(...byMonth.values());
+            for (const [month, minutes] of byMonth) {
+              const ratio = maxMonthMinutes > 0 ? minutes / maxMonthMinutes : 0;
+              report += `| ${month} | ${formatTime(minutes)} | \`${progressBar(ratio)}\` |\n`;
             }
 
             // Detail table
@@ -179,18 +185,29 @@ jobs:
               report += `| ${toFRDate(e.date)} | [\`${e.sha}\`](${e.url}) ${e.subject} | ${e.issue} | ${e.time} | @${e.author} |\n`;
             }
 
-            // Hidden data block (single HTML comment = invisible on GitHub)
-            const dataLines = allEntries.map(e =>
-              `${e.date}|${e.sha}|${e.url}|${e.subject}|${e.issue}|${e.time}|${e.author}`
-            );
-            report += `\n<!-- DATA\n${dataLines.join('\n')}\nDATA -->`;
-
-            // --- Update issue ---
-            await github.rest.issues.update({
+            // --- Find or create the tracking issue ---
+            const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: trackingIssue.number,
-              body: report,
+              labels: TRACKING_ISSUE_LABEL,
+              state: 'open',
             });
 
-            console.log(`Updated #${trackingIssue.number} — ${allEntries.length} entries, total: ${formatTime(totalMinutes)}`);
+            if (issues.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Time Tracking Report',
+                labels: [TRACKING_ISSUE_LABEL],
+                body: report,
+              });
+              console.log(`Created time tracking issue — ${allEntries.length} entries, total: ${formatTime(totalMinutes)}`);
+            } else {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues[0].number,
+                body: report,
+              });
+              console.log(`Updated #${issues[0].number} — ${allEntries.length} entries, total: ${formatTime(totalMinutes)}`);
+            }

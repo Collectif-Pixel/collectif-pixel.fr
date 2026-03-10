@@ -8,6 +8,8 @@
     "customize": {
       "message_template": "{{type}}{% if scope %}({{scope}}){% endif %}{% if is_breaking_change %}!{% endif %}: {{subject}}{% if body %}\n\n{{body}}{% endif %}{% if is_breaking_change or issue or time_spent %}\n{% endif %}{% if is_breaking_change %}\nBREAKING CHANGE: {{breaking_change}}{% endif %}{% if issue %}\nRefs: #{{issue}}{% endif %}{% if time_spent %}\nTime-spent: {{time_spent}}{% endif %}",
       "schema": "<type>(<scope>): <subject>\n<body>\n\nBREAKING CHANGE: <breaking_change>\nRefs: #<issue>\nTime-spent: <time_spent>",
+      "commit_parser": "^(?P<change_type>feat|fix|perf|refactor|build|ci|docs|style|test|chore|revert|bump)(?:\\((?P<scope>[^)]+)\\))?!?:\\s(?P<message>[^\\n]+)",
+      "changelog_pattern": "^(feat|fix|perf|refactor|build|ci|docs|style|test|chore|revert|bump)",
       "bump_pattern": "^(feat|fix|perf|refactor|build|ci|docs|style|test|chore|revert|bump)",
       "bump_map": {
         "feat": "MINOR",
