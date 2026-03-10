@@ -1,3 +1,9 @@
+## 1.2.6 (2026-03-10)
+
+### CI/CD
+
+- increase view of time tracking action issue
+
 ## 1.2.5 (2026-03-10)
 
 ### CI/CD
