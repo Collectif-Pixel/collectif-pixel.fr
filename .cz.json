@@ -1,9 +1,112 @@
 {
   "commitizen": {
-    "name": "cz_conventional_commits",
+    "name": "cz_customize",
     "tag_format": "$version",
     "version_scheme": "semver",
     "version_provider": "npm",
-    "update_changelog_on_bump": true
+    "update_changelog_on_bump": true,
+    "customize": {
+      "message_template": "{{type}}{% if scope %}({{scope}}){% endif %}{% if is_breaking_change %}!{% endif %}: {{subject}}{% if body %}\n\n{{body}}{% endif %}{% if is_breaking_change or issue or time_spent %}\n{% endif %}{% if is_breaking_change %}\nBREAKING CHANGE: {{breaking_change}}{% endif %}{% if issue %}\nRefs: #{{issue}}{% endif %}{% if time_spent %}\nTime-spent: {{time_spent}}{% endif %}",
+      "schema": "<type>(<scope>): <subject>\n<body>\n\nBREAKING CHANGE: <breaking_change>\nRefs: #<issue>\nTime-spent: <time_spent>",
+      "bump_pattern": "^(feat|fix|perf|refactor|build|ci|docs|style|test|chore|revert|bump)",
+      "bump_map": {
+        "feat": "MINOR",
+        "fix": "PATCH",
+        "perf": "PATCH",
+        "refactor": "PATCH",
+        "build": "PATCH",
+        "ci": "PATCH",
+        "docs": "PATCH",
+        "style": "PATCH",
+        "test": "PATCH",
+        "chore": "PATCH",
+        "revert": "PATCH",
+        "bump": "PATCH"
+      },
+      "change_type_order": [
+        "BREAKING CHANGE",
+        "feat",
+        "fix",
+        "refactor",
+        "perf",
+        "build",
+        "style",
+        "docs",
+        "ci",
+        "test",
+        "chore",
+        "revert"
+      ],
+      "change_type_map": {
+        "feat": "Features",
+        "fix": "Bug Fixes",
+        "refactor": "Refactoring",
+        "perf": "Performance",
+        "build": "Build",
+        "style": "Style",
+        "docs": "Documentation",
+        "ci": "CI/CD",
+        "test": "Tests",
+        "chore": "Chores",
+        "revert": "Reverts",
+        "bump": "Version"
+      },
+      "questions": [
+        {
+          "type": "list",
+          "name": "type",
+          "message": "Select the type of change you are committing:",
+          "choices": [
+            {"value": "feat", "name": "feat:     A new feature", "key": "f"},
+            {"value": "fix", "name": "fix:      A bug fix", "key": "x"},
+            {"value": "docs", "name": "docs:     Documentation only changes", "key": "d"},
+            {"value": "style", "name": "style:    Code style changes (formatting, etc.)", "key": "s"},
+            {"value": "refactor", "name": "refactor: A code change that neither fixes a bug nor adds a feature", "key": "r"},
+            {"value": "perf", "name": "perf:     A code change that improves performance", "key": "p"},
+            {"value": "test", "name": "test:     Adding or updating tests", "key": "t"},
+            {"value": "build", "name": "build:    Changes to the build system or dependencies", "key": "b"},
+            {"value": "ci", "name": "ci:       Changes to CI/CD configuration", "key": "c"},
+            {"value": "chore", "name": "chore:    Other changes that don't modify src or test files", "key": "o"},
+            {"value": "revert", "name": "revert:   Reverts a previous commit", "key": "v"}
+          ]
+        },
+        {
+          "type": "input",
+          "name": "scope",
+          "message": "Scope (optional):"
+        },
+        {
+          "type": "input",
+          "name": "subject",
+          "message": "Short description:"
+        },
+        {
+          "type": "input",
+          "name": "body",
+          "message": "Longer description (optional):"
+        },
+        {
+          "type": "confirm",
+          "name": "is_breaking_change",
+          "message": "Is this a breaking change?",
+          "default": false
+        },
+        {
+          "type": "input",
+          "name": "breaking_change",
+          "message": "Describe the breaking change:"
+        },
+        {
+          "type": "input",
+          "name": "issue",
+          "message": "GitHub issue number (optional):"
+        },
+        {
+          "type": "input",
+          "name": "time_spent",
+          "message": "Time spent (optional, e.g. 30m, 2h):"
+        }
+      ]
+    }
   }
 }
