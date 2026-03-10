@@ -229,14 +229,16 @@ jobs:
             const thisWeekEntries = allEntries.filter(e => e.date >= mondayThisWeek);
             const thisWeekMinutes = thisWeekEntries.reduce((sum, e) => sum + e.minutes, 0);
 
-            // By issue (with per-author breakdown)
+            // By issue (with per-author dev/review breakdown)
             const byIssue = {};
             for (const e of allEntries) {
-              if (!byIssue[e.issue]) byIssue[e.issue] = { minutes: 0, count: 0, authors: {} };
+              if (!byIssue[e.issue]) byIssue[e.issue] = { minutes: 0, dev: 0, review: 0, count: 0, authors: {} };
               byIssue[e.issue].minutes += e.minutes;
               byIssue[e.issue].count++;
-              if (!byIssue[e.issue].authors[e.author]) byIssue[e.issue].authors[e.author] = 0;
-              byIssue[e.issue].authors[e.author] += e.minutes;
+              if (e.type === 'review') byIssue[e.issue].review += e.minutes; else byIssue[e.issue].dev += e.minutes;
+              if (!byIssue[e.issue].authors[e.author]) byIssue[e.issue].authors[e.author] = { total: 0, dev: 0, review: 0 };
+              byIssue[e.issue].authors[e.author].total += e.minutes;
+              if (e.type === 'review') byIssue[e.issue].authors[e.author].review += e.minutes; else byIssue[e.issue].authors[e.author].dev += e.minutes;
             }
 
             // By month (with per-author dev/review breakdown)
@@ -315,17 +317,17 @@ jobs:
 
             // By issue
             report += `\n### Par issue / PR\n\n`;
-            report += `| Issue / PR | Auteur | Temps | | Entries |\n`;
-            report += `|------------|--------|-------|---|--------|\n`;
+            report += `| Issue / PR | Auteur | Total | Dev | Review | | Entries |\n`;
+            report += `|------------|--------|-------|-----|--------|---|--------|\n`;
             const sortedIssues = Object.entries(byIssue).sort((a, b) => b[1].minutes - a[1].minutes);
             for (const [issue, data] of sortedIssues) {
               const ratio = totalMinutes > 0 ? data.minutes / totalMinutes : 0;
               const pct = Math.round(ratio * 100);
-              report += `| **${issue}** | | **${formatTime(data.minutes)}** | \`${progressBar(ratio)}\` ${pct}% | **${data.count}** |\n`;
-              const sortedAuthors = Object.entries(data.authors).sort((a, b) => b[1] - a[1]);
+              report += `| **${issue}** | | **${formatTime(data.minutes)}** | ${formatTime(data.dev)} | ${formatTime(data.review)} | \`${progressBar(ratio)}\` ${pct}% | **${data.count}** |\n`;
+              const sortedAuthors = Object.entries(data.authors).sort((a, b) => b[1].total - a[1].total);
               if (sortedAuthors.length > 1) {
-                for (const [author, mins] of sortedAuthors) {
-                  report += `| | @${author} | ${formatTime(mins)} | | |\n`;
+                for (const [author, a] of sortedAuthors) {
+                  report += `| | @${author} | ${formatTime(a.total)} | ${formatTime(a.dev)} | ${formatTime(a.review)} | | |\n`;
                 }
               }
             }
