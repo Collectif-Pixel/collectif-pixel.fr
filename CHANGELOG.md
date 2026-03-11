@@ -1,3 +1,9 @@
+## 1.3.1 (2026-03-11)
+
+### Documentation
+
+- update changelogs
+
 ## 1.3.0 (2026-03-11)
 
 ### CI/CD
