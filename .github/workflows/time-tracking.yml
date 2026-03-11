@@ -2,7 +2,6 @@ name: Time Tracking
 
 on:
   push:
-    branches: [main]
   pull_request_review:
     types: [submitted]
 
@@ -50,11 +49,6 @@ jobs:
               return `${d}/${m}/${y}`;
             }
 
-            function progressBar(ratio, length = 10) {
-              const filled = Math.round(ratio * length);
-              return '█'.repeat(filled) + '░'.repeat(length - filled);
-            }
-
             function getMonday(date) {
               const d = new Date(date);
               const day = d.getDay();
@@ -81,11 +75,12 @@ jobs:
             const { execSync } = require('child_process');
             const SEP = '---COMMIT---';
             const raw = execSync(
-              `git log --format="${SEP}%n%H%n%aI%n%ae%n%B" HEAD`,
+              `git log --all --format="${SEP}%n%H%n%aI%n%ae%n%B"`,
               { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
             );
 
             const commitEntries = [];
+            const seenSha = new Set();
             const commitBlocks = raw.split(SEP).filter(Boolean);
 
             for (const block of commitBlocks) {
@@ -93,18 +88,22 @@ jobs:
               if (lines.length < 3) continue;
 
               const hash = lines[0];
-              const dateISO = lines[1].split('T')[0];
+              const timestamp = lines[1];
+              const dateISO = timestamp.split('T')[0];
               const email = lines[2];
               const message = lines.slice(3).join('\n');
+
+              const sha = hash.substring(0, 7);
+              if (seenSha.has(sha)) continue;
 
               const timeMatch = message.match(/Time-spent:\s*(.+)/i);
               if (!timeMatch) continue;
 
+              seenSha.add(sha);
               const time = timeMatch[1].trim();
               const issueMatch = message.match(/Refs:\s*#(\d+)/i);
               const issue = issueMatch ? `#${issueMatch[1]}` : '-';
               const subject = message.split('\n')[0];
-              const sha = hash.substring(0, 7);
               const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${hash}`;
 
               let author = emailToUsername[email];
@@ -127,6 +126,7 @@ jobs:
               commitEntries.push({
                 type: 'commit',
                 date: dateISO,
+                timestamp,
                 sha,
                 url,
                 subject,
@@ -159,10 +159,11 @@ jobs:
               if (dataMatch) {
                 for (const line of dataMatch[1].trim().split('\n')) {
                   const parts = line.split('|');
-                  if (parts.length === 7) {
+                  if (parts.length >= 7) {
                     reviewEntries.push({
                       type: 'review',
                       date: parts[0],
+                      timestamp: parts.length >= 8 ? parts[7] : parts[0] + 'T00:00:00Z',
                       id: parts[1],
                       url: parts[2],
                       subject: parts[3],
@@ -195,6 +196,7 @@ jobs:
                   reviewEntries.push({
                     type: 'review',
                     date: dateISO,
+                    timestamp: review.submitted_at,
                     id: reviewId,
                     url: review.html_url,
                     subject: `Review PR ${prNumber}: ${pr.title}`,
@@ -210,17 +212,14 @@ jobs:
             // =============================================
             // 3. MERGE & BUILD REPORT
             // =============================================
-            const allEntries = [
-              ...commitEntries.map(e => ({ ...e, sortKey: `${e.date}-${e.sha}` })),
-              ...reviewEntries.map(e => ({ ...e, sortKey: `${e.date}-${e.id}` })),
-            ];
+            const allEntries = [...commitEntries, ...reviewEntries];
 
             if (allEntries.length === 0) {
               console.log('No time entries found.');
               return;
             }
 
-            allEntries.sort((a, b) => b.date.localeCompare(a.date));
+            allEntries.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
             const totalMinutes = allEntries.reduce((sum, e) => sum + e.minutes, 0);
 
@@ -229,42 +228,116 @@ jobs:
             const thisWeekEntries = allEntries.filter(e => e.date >= mondayThisWeek);
             const thisWeekMinutes = thisWeekEntries.reduce((sum, e) => sum + e.minutes, 0);
 
-            // By issue
+            // By issue (with per-author dev/review breakdown)
             const byIssue = {};
             for (const e of allEntries) {
-              if (!byIssue[e.issue]) byIssue[e.issue] = { minutes: 0, count: 0 };
+              if (!byIssue[e.issue]) byIssue[e.issue] = { minutes: 0, dev: 0, review: 0, count: 0, authors: {} };
               byIssue[e.issue].minutes += e.minutes;
               byIssue[e.issue].count++;
+              if (e.type === 'review') byIssue[e.issue].review += e.minutes; else byIssue[e.issue].dev += e.minutes;
+              if (!byIssue[e.issue].authors[e.author]) byIssue[e.issue].authors[e.author] = { total: 0, dev: 0, review: 0 };
+              byIssue[e.issue].authors[e.author].total += e.minutes;
+              if (e.type === 'review') byIssue[e.issue].authors[e.author].review += e.minutes; else byIssue[e.issue].authors[e.author].dev += e.minutes;
             }
 
-            // By month
+            // By month (with per-author dev/review breakdown, sortable key)
             const byMonth = new Map();
             for (const e of allEntries) {
               const d = new Date(e.date + 'T00:00:00Z');
-              const key = `${monthNames[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-              byMonth.set(key, (byMonth.get(key) || 0) + e.minutes);
+              const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+              const label = `${monthNames[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+              if (!byMonth.has(key)) byMonth.set(key, { label, minutes: 0, dev: 0, review: 0, authors: {} });
+              const m = byMonth.get(key);
+              m.minutes += e.minutes;
+              if (e.type === 'review') m.review += e.minutes; else m.dev += e.minutes;
+              if (!m.authors[e.author]) m.authors[e.author] = { total: 0, dev: 0, review: 0 };
+              m.authors[e.author].total += e.minutes;
+              if (e.type === 'review') m.authors[e.author].review += e.minutes; else m.authors[e.author].dev += e.minutes;
             }
 
-            // By type (dev vs review)
-            const devMinutes = commitEntries.reduce((sum, e) => sum + e.minutes, 0);
-            const reviewMinutes = reviewEntries.reduce((sum, e) => sum + e.minutes, 0);
+            // By week (with per-author breakdown)
+            function getWeekLabel(date) {
+              const d = new Date(date + 'T00:00:00Z');
+              const monday = new Date(d);
+              const day = monday.getUTCDay();
+              monday.setUTCDate(monday.getUTCDate() - day + (day === 0 ? -6 : 1));
+              const sunday = new Date(monday);
+              sunday.setUTCDate(sunday.getUTCDate() + 6);
+              const fm = `${String(monday.getUTCDate()).padStart(2,'0')}/${String(monday.getUTCMonth()+1).padStart(2,'0')}`;
+              const fs = `${String(sunday.getUTCDate()).padStart(2,'0')}/${String(sunday.getUTCMonth()+1).padStart(2,'0')}/${sunday.getUTCFullYear()}`;
+              return `${fm} → ${fs}`;
+            }
+            function getWeekSortKey(date) {
+              return getMonday(new Date(date + 'T00:00:00Z'));
+            }
 
-            // By author
-            const byAuthor = {};
+            const byWeek = new Map();
             for (const e of allEntries) {
-              if (!byAuthor[e.author]) byAuthor[e.author] = { dev: 0, review: 0, total: 0, count: 0 };
-              byAuthor[e.author].total += e.minutes;
-              byAuthor[e.author].count++;
-              if (e.type === 'review') byAuthor[e.author].review += e.minutes;
-              else byAuthor[e.author].dev += e.minutes;
+              const key = getWeekSortKey(e.date);
+              if (!byWeek.has(key)) byWeek.set(key, { label: getWeekLabel(e.date), minutes: 0, dev: 0, review: 0, count: 0, authors: {} });
+              const w = byWeek.get(key);
+              w.minutes += e.minutes;
+              w.count++;
+              if (e.type === 'review') w.review += e.minutes; else w.dev += e.minutes;
+              if (!w.authors[e.author]) w.authors[e.author] = { total: 0, dev: 0, review: 0 };
+              w.authors[e.author].total += e.minutes;
+              if (e.type === 'review') w.authors[e.author].review += e.minutes; else w.authors[e.author].dev += e.minutes;
+            }
+
+            // By year (with per-author breakdown)
+            const byYear = new Map();
+            for (const e of allEntries) {
+              const year = e.date.substring(0, 4);
+              if (!byYear.has(year)) byYear.set(year, { minutes: 0, dev: 0, review: 0, count: 0, authors: {} });
+              const y = byYear.get(year);
+              y.minutes += e.minutes;
+              y.count++;
+              if (e.type === 'review') y.review += e.minutes; else y.dev += e.minutes;
+              if (!y.authors[e.author]) y.authors[e.author] = { total: 0, dev: 0, review: 0 };
+              y.authors[e.author].total += e.minutes;
+              if (e.type === 'review') y.authors[e.author].review += e.minutes; else y.authors[e.author].dev += e.minutes;
+            }
+
+            // --- Render helper: table with limit + collapsed overflow ---
+            const LIMIT = 6;
+
+            function renderRows(items, { showEntries = false } = {}) {
+              let rows = '';
+              for (const [label, data] of items) {
+                const entriesCol = showEntries ? ` | **${data.count}**` : '';
+                rows += `| **${label}** | | **${formatTime(data.minutes)}** | ${formatTime(data.dev)} | ${formatTime(data.review)}${entriesCol} |\n`;
+                const sortedAuthors = Object.entries(data.authors).sort((a, b) => b[1].total - a[1].total);
+                if (sortedAuthors.length >= 1) {
+                  for (const [author, a] of sortedAuthors) {
+                    const eCol = showEntries ? ' |' : '';
+                    rows += `| | @${author} | ${formatTime(a.total)} | ${formatTime(a.dev)} | ${formatTime(a.review)}${eCol} |\n`;
+                  }
+                }
+              }
+              return rows;
+            }
+
+            function renderSection(title, header, items, opts = {}) {
+              let section = '';
+              const visible = items.slice(0, LIMIT);
+              const collapsed = items.slice(LIMIT);
+
+              section += `### ${title}\n\n`;
+              section += header;
+              section += renderRows(visible, opts);
+
+              if (collapsed.length > 0) {
+                section += `\n<details>\n<summary><strong>+${collapsed.length} de plus</strong></summary>\n\n`;
+                section += header;
+                section += renderRows(collapsed, opts);
+                section += `\n</details>\n\n`;
+              }
+
+              return section;
             }
 
             // --- Render ---
             let report = `# Time Tracking Report\n\n`;
-
-            report += `| Total | Dev | Review | Cette semaine | Entries |\n`;
-            report += `|-------|-----|--------|---------------|--------|\n`;
-            report += `| **${formatTime(totalMinutes)}** | ${formatTime(devMinutes)} | ${formatTime(reviewMinutes)} | **${formatTime(thisWeekMinutes)}** | **${allEntries.length}** |\n\n`;
 
             // This week (collapsed)
             if (thisWeekEntries.length > 0) {
@@ -277,43 +350,39 @@ jobs:
               report += `\n</details>\n\n`;
             }
 
-            // By author
-            report += `### Par auteur\n\n`;
-            report += `| Auteur | Total | Dev | Review | | Entries |\n`;
-            report += `|--------|-------|-----|--------|---|--------|\n`;
-            const sortedAuthors = Object.entries(byAuthor).sort((a, b) => b[1].total - a[1].total);
-            for (const [author, data] of sortedAuthors) {
-              const ratio = totalMinutes > 0 ? data.total / totalMinutes : 0;
-              const pct = Math.round(ratio * 100);
-              report += `| @${author} | ${formatTime(data.total)} | ${formatTime(data.dev)} | ${formatTime(data.review)} | \`${progressBar(ratio)}\` ${pct}% | ${data.count} |\n`;
-            }
+            // By week
+            const sortedWeeks = [...byWeek.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+            const weekItems = sortedWeeks.map(([, data]) => [data.label, data]);
+            const weekHeader = `| Semaine | Auteur | Total | Dev | Review | Entries |\n|---------|--------|-------|-----|--------|---------|\n`;
+            report += renderSection('Par semaine', weekHeader, weekItems, { showEntries: true });
 
             // By issue
-            report += `\n### Par issue\n\n`;
-            report += `| Issue | Temps | | Entries |\n`;
-            report += `|-------|-------|---|--------|\n`;
             const sortedIssues = Object.entries(byIssue).sort((a, b) => b[1].minutes - a[1].minutes);
-            for (const [issue, data] of sortedIssues) {
-              const ratio = totalMinutes > 0 ? data.minutes / totalMinutes : 0;
-              const pct = Math.round(ratio * 100);
-              report += `| ${issue} | ${formatTime(data.minutes)} | \`${progressBar(ratio)}\` ${pct}% | ${data.count} |\n`;
-            }
+            const issueItems = sortedIssues.map(([issue, data]) => [issue, data]);
+            const issueHeader = `| Issue / PR | Auteur | Total | Dev | Review | Entries |\n|------------|--------|-------|-----|--------|---------|\n`;
+            report += `\n` + renderSection('Par issue / PR', issueHeader, issueItems, { showEntries: true });
 
             // By month
-            report += `\n### Par mois\n\n`;
-            report += `| Mois | Temps | |\n`;
-            report += `|------|-------|---|\n`;
-            const maxMonthMinutes = Math.max(...byMonth.values());
-            for (const [month, minutes] of byMonth) {
-              const ratio = maxMonthMinutes > 0 ? minutes / maxMonthMinutes : 0;
-              report += `| ${month} | ${formatTime(minutes)} | \`${progressBar(ratio)}\` |\n`;
-            }
+            const sortedMonths = [...byMonth.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+            const monthItems = sortedMonths.map(([, data]) => [data.label, data]);
+            const monthHeader = `| Mois | Auteur | Total | Dev | Review |\n|------|--------|-------|-----|--------|\n`;
+            report += `\n` + renderSection('Par mois', monthHeader, monthItems);
 
-            // Detail (collapsed)
-            report += `\n<details>\n<summary><strong>Toutes les entries</strong> — ${allEntries.length} entries</summary>\n\n`;
-            report += `| Date | Type | Description | Issue | Temps | Auteur |\n`;
-            report += `|------|------|-------------|-------|-------|--------|\n`;
-            for (const e of allEntries) {
+            // By year
+            const sortedYears = [...byYear.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+            const yearItems = sortedYears.map(([year, data]) => [year, data]);
+            const yearHeader = `| Année | Auteur | Total | Dev | Review |\n|-------|--------|-------|-----|--------|\n`;
+            report += `\n` + renderSection('Par année', yearHeader, yearItems);
+
+            // Detail (collapsed, truncated to stay under GitHub issue body limit)
+            const MAX_DETAIL_ENTRIES = 200;
+            const displayEntries = allEntries.slice(0, MAX_DETAIL_ENTRIES);
+            const truncated = allEntries.length > MAX_DETAIL_ENTRIES;
+            const truncLabel = truncated ? ` (${MAX_DETAIL_ENTRIES} plus récentes sur ${allEntries.length})` : '';
+            report += `\n<details>\n<summary><strong>Toutes les entries</strong> — ${allEntries.length} entries${truncLabel}</summary>\n\n`;
+            report += `| Date | Type | Description | Issue / PR | Temps | Auteur |\n`;
+            report += `|------|------|-------------|------------|-------|--------|\n`;
+            for (const e of displayEntries) {
               const icon = e.type === 'review' ? '👁️ Review' : '💻 Commit';
               const link = e.type === 'commit'
                 ? `[\`${e.sha}\`](${e.url}) ${e.subject}`
@@ -324,7 +393,7 @@ jobs:
 
             // Hidden review data (commits are re-parsed from git, reviews need persistence)
             const reviewDataLines = reviewEntries.map(e =>
-              `${e.date}|${e.id}|${e.url}|${e.subject}|${e.issue}|${e.time}|${e.author}`
+              `${e.date}|${e.id}|${e.url}|${e.subject}|${e.issue}|${e.time}|${e.author}|${e.timestamp}`
             );
             report += `<!-- REVIEWS_DATA\n${reviewDataLines.join('\n')}\nREVIEWS_DATA -->`;
 
