@@ -1,3 +1,25 @@
+## 1.3.0 (2026-03-11)
+
+### CI/CD
+
+- optimization of time tracking action
+- update time tracking action
+- update time tracking action filter desc
+- update time tracking action
+- update time tracking action
+- update time tracking action display tables
+- increase time tracking action
+- update tables time tracking action
+- rename column issue into issue / PR
+
+### Chores
+
+- add plausible analytics
+
+### Features
+
+- **blog**: edit article
+
 ## 1.2.9 (2026-03-10)
 
 ### CI/CD
